@@ -88,10 +88,12 @@ export function GameCanvas({
     moved: false,
   });
   const placingRef = useRef(placing);
+  const placingActiveRef = useRef(placingActive);
   const buildingsRef = useRef(buildings);
   const roadToolRef = useRef(roadTool);
   const movingRef = useRef(movingId);
   placingRef.current = placing;
+  placingActiveRef.current = placingActive;
   buildingsRef.current = buildings;
   roadToolRef.current = roadTool;
   movingRef.current = movingId;
