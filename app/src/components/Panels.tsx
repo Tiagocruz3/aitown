@@ -483,9 +483,15 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
   const def = PROVIDERS[provider];
   const cfg = getConfig(provider);
   const live = hasKey(provider);
+  const agentName = cfg.agentName;
+  // Greeting personalized to the (possibly custom) agent name.
+  const greeting =
+    cfg.agentName === def.agent.name
+      ? def.agent.greeting
+      : `Hi, I'm ${agentName}, your ${def.agent.title}. Ask me anything and I'll get to work.`;
   const [tab, setTab] = useState<AgentTab>("chat");
   const [sessionId, setSessionId] = useState<string>(() => `s-${Date.now()}`);
-  const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: def.agent.greeting }]);
+  const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: greeting }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [store, setStore] = useState<AgentStore>(() => getAgentStore(provider));
