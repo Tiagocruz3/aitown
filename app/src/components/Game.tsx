@@ -6,16 +6,14 @@ import {
   type RoadTool,
 } from "./GameCanvas";
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
-import { DockTray } from "./Trays";
+import { Dock } from "./Trays";
 import { ContextMenu, BrandImg } from "./Modals";
 import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
-  DOCK,
   GRID_HELP,
   TOWN_HALL,
-  type DockKind,
   type ProviderId,
 } from "../game/data";
 
@@ -34,7 +32,9 @@ export function Game() {
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
-  const [dockModal, setDockModal] = useState<DockKind | null>(null);
+  // Menu-stack navigation for the fixed dock. Empty = main menu; each entry
+  // drills one level deeper (e.g. ["buildings"], ["integrations", "grp-AI Providers"]).
+  const [dockPath, setDockPath] = useState<string[]>([]);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -175,19 +175,19 @@ export function Game() {
     setRoadTool(null);
     setMovingId(null);
     setPlacing({ kind: "provider", provider: p });
-    setDockModal(null);
+    setDockPath([]);
   }
   function startPlacingTownHall() {
     setRoadTool(null);
     setMovingId(null);
     setPlacing({ kind: "town-hall" });
-    setDockModal(null);
+    setDockPath([]);
   }
   function chooseRoadTool(t: RoadTool | null) {
     setPlacing(null);
     if (t) setMovingId(null);
     setRoadTool(t);
-    if (t) setDockModal(null);
+    // Keep the dock on the Roads submenu so Paint/Erase can be toggled freely.
   }
   function clearRoads() {
     roads.current = new Set();
@@ -256,9 +256,20 @@ export function Game() {
     showToast(`${PROVIDERS[b.provider].name} duplicated`);
   }
 
-  // open a building (route town-hall to its own panel); closes the tray
+  // Clicking a building on the map just SELECTS it — the dock turns into that
+  // building's command center (Configure / Move / Duplicate / Delete …). The
+  // full settings panel only opens via the dock's "Configure" action.
+  function selectBuilding(b: PlacedBuilding) {
+    setDockPath([]);
+    setOpenBuilding(null);
+    setOpenTownHall(null);
+    setOpenAgentId(null);
+    setSelectedId(b.id);
+  }
+
+  // open a building (route town-hall to its own panel); resets the dock
   function openBuildingById(b: PlacedBuilding) {
-    setDockModal(null);
+    setDockPath([]);
     setSelectedId(b.id);
     if (b.kind === "town-hall") {
       setOpenBuilding(null);
@@ -270,7 +281,7 @@ export function Game() {
   }
 
   function openAgentById(id: string) {
-    setDockModal(null);
+    setDockPath([]);
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenAgentId(id);
@@ -280,17 +291,14 @@ export function Game() {
     if (a) openAgentById(a.id);
   }
 
-  // toggle a bottom tray; opening one closes any right panel
-  function toggleTray(kind: DockKind) {
-    setDockModal((cur) => {
-      const next = cur === kind ? null : kind;
-      if (next) {
-        setOpenBuilding(null);
-        setOpenTownHall(null);
-        setOpenAgentId(null);
-      }
-      return next;
-    });
+  // Navigate the dock menu stack; entering a submenu closes any right panel.
+  function navigateDock(path: string[]) {
+    if (path.length) {
+      setOpenBuilding(null);
+      setOpenTownHall(null);
+      setOpenAgentId(null);
+    }
+    setDockPath(path);
   }
 
   const liveAgents = agents.current;
@@ -312,7 +320,7 @@ export function Game() {
         onPlace={place}
         onPaintRoad={paintRoad}
         onMoveTo={moveTo}
-        onPickBuilding={openBuildingById}
+        onPickBuilding={selectBuilding}
         onPickAgent={openAgentById}
         onDeselect={() => setSelectedId(null)}
         onContextBuilding={(b, x, y) => setCtx({ b, x, y })}
@@ -334,7 +342,7 @@ export function Game() {
       </div>
 
       {/* empty-state hint */}
-      {buildings.length === 0 && !placing && !dockModal && (
+      {buildings.length === 0 && !placing && dockPath.length === 0 && !selected && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="pointer-events-auto rounded-3xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
             <div className="text-3xl">🏗️</div>
@@ -343,7 +351,7 @@ export function Game() {
               Open <b>Buildings</b> and place the Town Hall, then add provider buildings — each one hires its branded AI agent.
             </p>
             <button
-              onClick={() => toggleTray("buildings")}
+              onClick={() => navigateDock(["buildings"])}
               className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
             >
               Open Buildings
@@ -406,71 +414,39 @@ export function Game() {
         />
       )}
 
-      {/* Town Star-style edit toolbar for the selected building (Open / Move / Remove) */}
-      {selected && !movingId && (
-        <EditToolbar
-          building={selected}
-          onOpen={() => openBuildingById(selected)}
-          onMove={() => startMoving(selected)}
-          onDuplicate={() => duplicateBuilding(selected)}
-          onRemove={() => {
-            const name = selected.kind === "town-hall" ? "Town Hall" : PROVIDERS[selected.provider].name;
-            if (confirm(`Remove ${name}?`)) deleteBuilding(selected);
-          }}
-        />
-      )}
-
-      {/* ===== Town Star-style floating bottom dock (the launcher) ===== */}
-      {/* Hidden while a tray is open — the tray becomes the dock. */}
-      {!selected && !dockModal && (
-        <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-3">
-          <div className="flex max-w-[96vw] items-end gap-2 overflow-x-auto rounded-[26px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
-            {DOCK.map((d) => {
-              const active =
-                dockModal === d.id || (d.id === "buildings" && (!!roadTool || placing?.kind === "town-hall"));
-              return (
-                <button
-                  key={d.id}
-                  onClick={() => toggleTray(d.id)}
-                  className="group flex shrink-0 flex-col items-center gap-1"
-                >
-                  <div
-                    className={`grid h-[68px] w-[68px] place-items-center rounded-[20px] border transition ${
-                      active
-                        ? "border-white/40 bg-[#FBFBEF] shadow-lg"
-                        : "border-black/5 bg-[#F0F4E1]/90 shadow-md group-hover:-translate-y-1 group-hover:bg-[#F6F8E8]"
-                    }`}
-                  >
-                    <DockIcon icon={d.icon} emoji={d.emoji} />
-                  </div>
-                  <span className="text-[11px] font-semibold text-white drop-shadow">{d.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* hint */}
       <div className="pointer-events-none absolute bottom-28 left-4 hidden max-w-xs rounded-lg bg-black/30 px-3 py-1.5 text-[11px] text-white/70 backdrop-blur sm:block">
         {GRID_HELP}
       </div>
 
-      {/* ===== Bottom tray (the dock expands upward into this) ===== */}
-      {dockModal && (
-        <DockTray
-          kind={dockModal}
+      {/* ===== Dynamic dock — fixed-size game toolbar with menu-stack nav ===== */}
+      {/* While moving a building the dock collapses to the main menu so the */}
+      {/* map stays the focus; a selected building turns it into a command center. */}
+      {!movingId && (
+        <Dock
+          path={dockPath}
+          onNavigate={navigateDock}
           buildings={buildings}
           agents={liveAgents}
           roadCount={roadCount}
           roadTool={roadTool}
           hasTownHall={hasTownHall}
-          onClose={() => setDockModal(null)}
+          placing={!!placing}
+          selected={selected}
           onPlaceProvider={startPlacingProvider}
           onPlaceTownHall={startPlacingTownHall}
           onOpenAgent={(id) => openAgentById(id)}
           onRoadTool={chooseRoadTool}
           onClearRoads={clearRoads}
+          onOpenBuilding={openBuildingById}
+          onMoveBuilding={startMoving}
+          onDuplicateBuilding={duplicateBuilding}
+          onDeleteBuilding={(b) => {
+            const name = b.kind === "town-hall" ? "Town Hall" : PROVIDERS[b.provider].name;
+            if (confirm(`Remove ${name}?`)) deleteBuilding(b);
+          }}
+          onChatBuilding={(b) => openAgentByProvider(b.provider)}
+          onDeselect={() => setSelectedId(null)}
         />
       )}
 
@@ -552,21 +528,6 @@ function Pill({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-function DockIcon({ icon, emoji }: { icon: string; emoji: string }) {
-  const [ok, setOk] = useState(true);
-  if (icon && ok) {
-    return (
-      <img
-        src={icon}
-        alt=""
-        className="h-[52px] w-[52px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]"
-        onError={() => setOk(false)}
-      />
-    );
-  }
-  return <span className="text-3xl">{emoji}</span>;
-}
-
 /* Town Star-style top-left building info card */
 function BuildingInfoCard({
   building,
@@ -624,54 +585,3 @@ function StatBar({ icon, value, color }: { icon: string; value: string; color?: 
   );
 }
 
-/* Town Star-style edit toolbar (bottom center): Open / Move / Duplicate / Remove */
-function EditToolbar({
-  building,
-  onOpen,
-  onMove,
-  onDuplicate,
-  onRemove,
-}: {
-  building: PlacedBuilding;
-  onOpen: () => void;
-  onMove: () => void;
-  onDuplicate: () => void;
-  onRemove: () => void;
-}) {
-  const isHall = building.kind === "town-hall";
-  return (
-    <div className="absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3">
-      <div className="flex items-end gap-2 rounded-[24px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
-        <ToolCard emoji="⚙️" label="Open" onClick={onOpen} />
-        <ToolCard emoji="✋" label="Move" onClick={onMove} />
-        {!isHall && <ToolCard emoji="➕" label="Duplicate" onClick={onDuplicate} />}
-        <ToolCard emoji="💣" label="Remove" danger onClick={onRemove} />
-      </div>
-    </div>
-  );
-}
-
-function ToolCard({
-  emoji,
-  label,
-  danger,
-  onClick,
-}: {
-  emoji: string;
-  label: string;
-  danger?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button onClick={onClick} className="group flex flex-col items-center gap-1">
-      <div
-        className={`grid h-[64px] w-[64px] place-items-center rounded-[20px] border shadow-md transition group-hover:-translate-y-1 ${
-          danger ? "border-red-300/60 bg-[#FBE9E1]/95" : "border-black/5 bg-[#F0F4E1]/95"
-        }`}
-      >
-        <span className="text-3xl">{emoji}</span>
-      </div>
-      <span className="text-[11px] font-semibold text-white drop-shadow">{label}</span>
-    </button>
-  );
-}

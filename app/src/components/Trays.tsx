@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { BrandImg } from "./Modals";
 import {
   PROVIDERS,
@@ -12,201 +11,283 @@ import {
   MARKETPLACE_SECTIONS,
   WORLD_SECTIONS,
   TOWN_HALL,
-  type DockKind,
   type ProviderId,
 } from "../game/data";
 import type { PlacedBuilding, LiveAgent, RoadTool } from "./GameCanvas";
 
 /* ==================================================================
-   BOTTOM TRAY — the dock expands upward into this. Town Star style.
-   Anchored to the bottom, short height, never covers the city center.
+   DYNAMIC DOCK — a fixed-size game toolbar (SimCity / Clash style).
+   The dock never grows: clicking a category REPLACES the icons inside
+   the same strip with a submenu. A "Back" tile walks up the stack and a
+   small breadcrumb shows where you are. No large overlay panels, the map
+   stays fully visible at all times.
    ================================================================== */
 
-export function DockTray({
-  kind,
+// One navigable tile in the dock. Either it drills into `children`
+// (replacing the dock contents) or it runs a leaf `onSelect` action.
+export interface DockItem {
+  id: string;
+  label: string;
+  emoji?: string;
+  icon?: string; // rendered dock icon (png)
+  art?: string; // brand art (png)
+  desc?: string;
+  badge?: string;
+  accent?: string;
+  disabled?: boolean;
+  danger?: boolean;
+  active?: boolean;
+  onSelect?: () => void;
+  children?: DockItem[];
+}
+
+export function Dock({
+  path,
+  onNavigate,
   buildings,
   agents,
   roadCount,
   roadTool,
   hasTownHall,
-  onClose,
+  placing,
+  selected,
   onPlaceProvider,
   onPlaceTownHall,
   onOpenAgent,
   onRoadTool,
   onClearRoads,
+  onOpenBuilding,
+  onMoveBuilding,
+  onDuplicateBuilding,
+  onDeleteBuilding,
+  onChatBuilding,
+  onDeselect,
 }: {
-  kind: DockKind;
+  path: string[];
+  onNavigate: (path: string[]) => void;
   buildings: PlacedBuilding[];
   agents: LiveAgent[];
   roadCount: number;
   roadTool: RoadTool | null;
   hasTownHall: boolean;
-  onClose: () => void;
+  placing: boolean;
+  selected: PlacedBuilding | null;
   onPlaceProvider: (p: ProviderId) => void;
   onPlaceTownHall: () => void;
   onOpenAgent: (id: string) => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
+  onOpenBuilding: (b: PlacedBuilding) => void;
+  onMoveBuilding: (b: PlacedBuilding) => void;
+  onDuplicateBuilding: (b: PlacedBuilding) => void;
+  onDeleteBuilding: (b: PlacedBuilding) => void;
+  onChatBuilding: (b: PlacedBuilding) => void;
+  onDeselect: () => void;
 }) {
-  const meta = DOCK.find((d) => d.id === kind);
+  // When a building is selected on the map, the dock becomes its command
+  // center — a self-contained context level that ignores the menu stack.
+  if (selected) {
+    const items = buildingActions(selected, {
+      onOpenBuilding,
+      onMoveBuilding,
+      onDuplicateBuilding,
+      onDeleteBuilding,
+      onChatBuilding,
+      onDeselect,
+    });
+    const name =
+      selected.kind === "town-hall" ? "Town Hall" : PROVIDERS[selected.provider].name;
+    return <DockBar crumbs={["Buildings", name]} items={items} onBack={onDeselect} />;
+  }
 
+  const roots = buildRoots({
+    buildings,
+    agents,
+    roadCount,
+    roadTool,
+    hasTownHall,
+    placing,
+    onPlaceProvider,
+    onPlaceTownHall,
+    onOpenAgent,
+    onRoadTool,
+    onClearRoads,
+  });
+
+  // Resolve the current level by walking the freshly-built tree by id, so
+  // every tile reflects live game state on each render.
+  let level = roots;
+  const trail: DockItem[] = [];
+  for (const id of path) {
+    const found = level.find((i) => i.id === id);
+    if (!found || !found.children) break;
+    trail.push(found);
+    level = found.children;
+  }
+
+  const crumbs = trail.map((t) => t.label);
+  const onBack = path.length ? () => onNavigate(path.slice(0, -1)) : undefined;
+
+  // Each tile either drills in (navigate) or fires its leaf action.
+  const items: DockItem[] = level.map((node) =>
+    node.children
+      ? { ...node, onSelect: () => onNavigate([...path, node.id]) }
+      : node,
+  );
+
+  return <DockBar crumbs={crumbs} items={items} onBack={onBack} />;
+}
+
+/* ---- The fixed dock strip ------------------------------------------------ */
+
+function DockBar({
+  crumbs,
+  items,
+  onBack,
+}: {
+  crumbs: string[];
+  items: DockItem[];
+  onBack?: () => void;
+}) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col">
-      <div
-        className="pointer-events-auto w-full animate-[trayUp_.18s_ease-out] rounded-t-[26px] border-t border-white/10 bg-[#0d0f17]/95 shadow-[0_-20px_60px_-10px_rgba(0,0,0,0.6)] backdrop-blur-xl"
-        style={{ maxHeight: "38vh" }}
-      >
-        <div className="mx-auto flex w-[min(1100px,100%)] items-center gap-3 px-5 pt-3 pb-2">
-          {meta?.icon && <BrandImg src={meta.icon} alt="" className="h-9 w-9 object-contain" />}
-          <div className="flex-1">
-            <h3 className="text-base font-extrabold tracking-tight text-white">{trayTitle(kind)}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-xl bg-white/8 px-4 py-1.5 text-sm font-semibold text-white/80 hover:bg-white/15"
-          >
-            Close
-          </button>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-2 px-3 pb-3">
+      {/* breadcrumb — small, floats above the dock, never covers the map */}
+      {crumbs.length > 0 && (
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur-md">
+          <span className="opacity-60">🏙️</span>
+          {crumbs.map((c, i) => (
+            <span key={i} className="flex items-center gap-1.5">
+              {i > 0 && <span className="opacity-40">›</span>}
+              <span className={i === crumbs.length - 1 ? "text-white" : "text-white/60"}>{c}</span>
+            </span>
+          ))}
         </div>
+      )}
 
-        <div className="mx-auto w-[min(1100px,100%)] overflow-y-auto border-t border-white/8 px-5 py-4" style={{ maxHeight: "calc(38vh - 52px)" }}>
-          {kind === "agents" && <AgentsTray agents={agents} onOpenAgent={onOpenAgent} />}
-          {kind === "buildings" && (
-            <BuildingsTray
-              hasTownHall={hasTownHall}
-              roadCount={roadCount}
-              roadTool={roadTool}
-              onPlaceProvider={onPlaceProvider}
-              onPlaceTownHall={onPlaceTownHall}
-              onRoadTool={onRoadTool}
-              onClearRoads={onClearRoads}
-            />
-          )}
-          {kind === "workflows" && <RowTiles items={WORKFLOWS} badge="soon" />}
-          {kind === "integrations" && <IntegrationsTray />}
-          {kind === "workforce" && (
-            <WorkforceTray buildings={buildings} agents={agents} onOpenAgent={onOpenAgent} />
-          )}
-          {kind === "missions" && <SectionRow sections={MISSION_SECTIONS} />}
-          {kind === "assets" && <SectionRow sections={ASSET_SECTIONS} />}
-          {kind === "marketplace" && <SectionRow sections={MARKETPLACE_SECTIONS} />}
-          {kind === "world" && <SectionRow sections={WORLD_SECTIONS} />}
-        </div>
+      {/* the dock — fixed height, horizontal scroll on overflow, never grows up */}
+      <div className="pointer-events-auto flex max-w-[96vw] items-end gap-2 overflow-x-auto rounded-[26px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
+        {onBack && (
+          <DockTile
+            item={{ id: "__back", label: "Back", emoji: "⬅️", accent: "#94a3b8" }}
+            onClick={onBack}
+          />
+        )}
+        {items.map((item) => (
+          <DockTile key={item.id} item={item} onClick={item.disabled ? undefined : item.onSelect} />
+        ))}
       </div>
     </div>
   );
 }
 
-function trayTitle(kind: DockKind): string {
-  const map: Record<string, string> = {
-    agents: "Agents",
-    buildings: "Buildings",
-    workflows: "Workflows",
-    integrations: "Integrations",
-    workforce: "Workforce",
-    missions: "Missions",
-    assets: "Assets",
-    marketplace: "Marketplace",
-    world: "World",
-    roads: "Roads",
-  };
-  return map[kind] ?? kind;
-}
-
-function HScroll({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "thin" }}>
-      {children}
-    </div>
-  );
-}
-
-function Tile({
-  emoji,
-  art,
-  label,
-  desc,
-  accent,
-  badge,
-  disabled,
-  onClick,
-}: {
-  emoji?: string;
-  art?: string;
-  label: string;
-  desc?: string;
-  accent?: string;
-  badge?: string;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
+function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
+  const { label, emoji, icon, art, badge, accent, disabled, danger, active } = item;
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`group relative flex w-[128px] shrink-0 flex-col items-center gap-1 rounded-2xl border p-3 text-center transition ${
-        disabled
-          ? "cursor-not-allowed border-white/5 bg-white/[0.02] opacity-55"
-          : "border-white/10 bg-white/[0.05] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.09]"
-      }`}
-      style={accent ? { boxShadow: `inset 0 -3px 0 ${accent}` } : undefined}
+      title={item.desc ?? label}
+      className="group flex w-[76px] shrink-0 flex-col items-center gap-1"
     >
-      {badge && (
-        <span className="absolute right-2 top-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white/55">
-          {badge}
-        </span>
-      )}
-      <div className="grid h-14 w-14 place-items-center">
-        {art ? (
-          <BrandImg src={art} alt={label} className="h-14 w-14 object-contain transition group-hover:scale-110" />
-        ) : (
-          <span className="text-3xl transition group-hover:scale-110">{emoji}</span>
+      <div
+        className={`relative grid h-[68px] w-[68px] place-items-center rounded-[20px] border shadow-md transition ${
+          disabled
+            ? "cursor-not-allowed border-black/5 bg-[#e7eadb]/60 opacity-55"
+            : danger
+              ? "border-red-300/60 bg-[#FBE9E1]/95 group-hover:-translate-y-1"
+              : active
+                ? "border-white/50 bg-[#FBFBEF] ring-2 ring-white/60"
+                : "border-black/5 bg-[#F0F4E1]/95 group-hover:-translate-y-1 group-hover:bg-[#F6F8E8]"
+        }`}
+        style={accent && !disabled ? { boxShadow: `inset 0 -3px 0 ${accent}` } : undefined}
+      >
+        {badge && (
+          <span className="absolute right-1.5 top-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wide text-white/80">
+            {badge}
+          </span>
         )}
+        <Glyph emoji={emoji} icon={icon} art={art} />
       </div>
-      <div className="text-[12px] font-semibold leading-tight text-white">{label}</div>
-      {desc && <div className="line-clamp-2 text-[9px] leading-snug text-white/45">{desc}</div>}
+      <span className="w-full truncate text-center text-[11px] font-semibold text-white drop-shadow">
+        {label}
+      </span>
     </button>
   );
 }
 
-function AgentsTray({ agents, onOpenAgent }: { agents: LiveAgent[]; onOpenAgent: (id: string) => void }) {
-  return (
-    <div className="space-y-3">
-      {agents.length > 0 && (
-        <div>
-          <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-white/45">In your town now</div>
-          <HScroll>
-            {agents.map((a) => {
-              const p = PROVIDERS[a.provider];
-              return (
-                <Tile key={a.id} art={p.agentArt} label={a.name} desc={p.agent.title} accent={p.color} onClick={() => onOpenAgent(a.id)} />
-              );
-            })}
-          </HScroll>
-        </div>
-      )}
-      <div>
-        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-white/45">Agent types</div>
-        <HScroll>
-          {AGENT_LIBRARY.map((a) => (
-            <Tile key={a.id} emoji={a.emoji} label={a.label} desc={a.desc} badge="soon" disabled />
-          ))}
-        </HScroll>
-      </div>
-    </div>
-  );
+function Glyph({ emoji, icon, art }: { emoji?: string; icon?: string; art?: string }) {
+  const src = art ?? icon;
+  if (src) {
+    return <BrandImg src={src} alt="" className="h-[52px] w-[52px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]" />;
+  }
+  return <span className="text-3xl">{emoji}</span>;
 }
 
-function BuildingsTray({
-  hasTownHall,
-  roadCount,
-  roadTool,
-  onPlaceProvider,
-  onPlaceTownHall,
-  onRoadTool,
-  onClearRoads,
-}: {
+/* ---- Menu tree ----------------------------------------------------------- */
+
+// Build the root dock categories with their (live) submenus. Rebuilt on every
+// render so tiles always reflect current buildings / agents / road state.
+function buildRoots(ctx: {
+  buildings: PlacedBuilding[];
+  agents: LiveAgent[];
+  roadCount: number;
+  roadTool: RoadTool | null;
+  hasTownHall: boolean;
+  placing: boolean;
+  onPlaceProvider: (p: ProviderId) => void;
+  onPlaceTownHall: () => void;
+  onOpenAgent: (id: string) => void;
+  onRoadTool: (t: RoadTool | null) => void;
+  onClearRoads: () => void;
+}): DockItem[] {
+  const childrenFor: Record<string, DockItem[]> = {
+    agents: agentsMenu(ctx),
+    buildings: buildingsMenu(ctx),
+    workflows: soonTiles(WORKFLOWS),
+    integrations: integrationsMenu(),
+    workforce: workforceMenu(ctx),
+    missions: soonSections(MISSION_SECTIONS, "📋"),
+    assets: soonSections(ASSET_SECTIONS, "📦"),
+    marketplace: soonSections(MARKETPLACE_SECTIONS, "🛒"),
+    world: soonSections(WORLD_SECTIONS, "🌍"),
+  };
+
+  return DOCK.map((d) => ({
+    id: d.id,
+    label: d.label,
+    icon: d.icon,
+    emoji: d.emoji,
+    children: childrenFor[d.id] ?? [],
+  }));
+}
+
+function agentsMenu(ctx: {
+  agents: LiveAgent[];
+  onOpenAgent: (id: string) => void;
+}): DockItem[] {
+  const live: DockItem[] = ctx.agents.map((a) => {
+    const p = PROVIDERS[a.provider];
+    return {
+      id: `agent-${a.id}`,
+      label: a.name,
+      art: p.agentArt,
+      accent: p.color,
+      desc: p.agent.title,
+      onSelect: () => ctx.onOpenAgent(a.id),
+    };
+  });
+  const library: DockItem[] = AGENT_LIBRARY.map((a) => ({
+    id: a.id,
+    label: a.label,
+    emoji: a.emoji,
+    desc: a.desc,
+    badge: "soon",
+    disabled: true,
+  }));
+  return [...live, ...library];
+}
+
+function buildingsMenu(ctx: {
   hasTownHall: boolean;
   roadCount: number;
   roadTool: RoadTool | null;
@@ -214,162 +295,172 @@ function BuildingsTray({
   onPlaceTownHall: () => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <HScroll>
-        <Tile
-          emoji={TOWN_HALL.emoji}
-          art={TOWN_HALL.art}
-          label={TOWN_HALL.name}
-          desc={hasTownHall ? "Already in city" : "OS control center"}
-          accent={TOWN_HALL.color}
-          disabled={hasTownHall}
-          onClick={hasTownHall ? undefined : onPlaceTownHall}
-        />
-        {BUILDING_LIBRARY.map((b) => {
-          const p = b.provider ? PROVIDERS[b.provider] : undefined;
-          return (
-            <Tile
-              key={b.id}
-              art={p?.buildingArt}
-              emoji={b.emoji}
-              label={b.label}
-              desc={b.desc}
-              accent={p?.color}
-              badge={p ? undefined : "soon"}
-              disabled={!p}
-              onClick={p ? () => onPlaceProvider(b.provider!) : undefined}
-            />
-          );
-        })}
-      </HScroll>
+}): DockItem[] {
+  const townHall: DockItem = {
+    id: "town-hall",
+    label: TOWN_HALL.name,
+    art: TOWN_HALL.art,
+    accent: TOWN_HALL.color,
+    desc: ctx.hasTownHall ? "Already in city" : "OS control center",
+    disabled: ctx.hasTownHall,
+    onSelect: ctx.hasTownHall ? undefined : ctx.onPlaceTownHall,
+  };
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-white/45">Roads</span>
-        <button
-          onClick={() => onRoadTool(roadTool === "road" ? null : "road")}
-          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-            roadTool === "road" ? "border-white/40 bg-white/15 text-white" : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-          }`}
-        >
-          🛣️ Paint
-        </button>
-        <button
-          onClick={() => onRoadTool(roadTool === "erase-road" ? null : "erase-road")}
-          className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-            roadTool === "erase-road" ? "border-white/40 bg-white/15 text-white" : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-          }`}
-        >
-          🧽 Erase
-        </button>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-white/45">{roadCount} tiles</span>
-          <button
-            onClick={onClearRoads}
-            disabled={roadCount === 0}
-            className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-40"
-          >
-            Clear all
-          </button>
-        </div>
-      </div>
-      <p className="text-[11px] text-white/35">
-        Pick a building, then click a tile to place it. Pick a road tool, then paint directly on the map — the tray stays out of the city.
-      </p>
-    </div>
-  );
+  const placeable: DockItem[] = BUILDING_LIBRARY.map((b) => {
+    const p = b.provider ? PROVIDERS[b.provider] : undefined;
+    return {
+      id: b.id,
+      label: b.label,
+      art: p?.buildingArt,
+      emoji: b.emoji,
+      accent: p?.color,
+      desc: b.desc,
+      badge: p ? undefined : "soon",
+      disabled: !p,
+      onSelect: p ? () => ctx.onPlaceProvider(b.provider!) : undefined,
+    };
+  });
+
+  const roads: DockItem = {
+    id: "roads",
+    label: "Roads",
+    emoji: "🛣️",
+    desc: "Paint or erase roads on the map",
+    children: [
+      {
+        id: "road-paint",
+        label: "Paint",
+        emoji: "🛣️",
+        active: ctx.roadTool === "road",
+        onSelect: () => ctx.onRoadTool(ctx.roadTool === "road" ? null : "road"),
+      },
+      {
+        id: "road-erase",
+        label: "Erase",
+        emoji: "🧽",
+        active: ctx.roadTool === "erase-road",
+        onSelect: () => ctx.onRoadTool(ctx.roadTool === "erase-road" ? null : "erase-road"),
+      },
+      {
+        id: "road-clear",
+        label: `Clear (${ctx.roadCount})`,
+        emoji: "🗑️",
+        danger: true,
+        disabled: ctx.roadCount === 0,
+        onSelect: ctx.onClearRoads,
+      },
+    ],
+  };
+
+  return [townHall, ...placeable, roads];
 }
 
-function IntegrationsTray() {
-  return (
-    <div className="space-y-3">
-      {INTEGRATIONS.map((grp) => (
-        <div key={grp.group}>
-          <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-white/45">{grp.group}</div>
-          <HScroll>
-            {grp.items.map((it) => (
-              <Tile key={it.id} emoji={it.emoji} label={it.label} disabled />
-            ))}
-          </HScroll>
-        </div>
-      ))}
-    </div>
-  );
+function integrationsMenu(): DockItem[] {
+  return INTEGRATIONS.map((grp) => ({
+    id: `grp-${grp.group}`,
+    label: grp.group,
+    emoji: "🔌",
+    desc: `${grp.items.length} integrations`,
+    children: grp.items.map((it) => ({
+      id: it.id,
+      label: it.label,
+      emoji: it.emoji,
+      badge: "soon",
+      disabled: true,
+    })),
+  }));
 }
 
-function WorkforceTray({
-  buildings,
-  agents,
-  onOpenAgent,
-}: {
-  buildings: PlacedBuilding[];
+function workforceMenu(ctx: {
   agents: LiveAgent[];
   onOpenAgent: (id: string) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <Stat label="Agents" value={agents.length} />
-        <Stat label="Buildings" value={buildings.length} />
-        <Stat label="Revenue" value="$0" />
-      </div>
-      {agents.length ? (
-        <HScroll>
-          {agents.map((a) => {
-            const p = PROVIDERS[a.provider];
-            return <Tile key={a.id} art={p.agentArt} label={a.name} desc={a.state} accent={p.color} onClick={() => onOpenAgent(a.id)} />;
-          })}
-        </HScroll>
-      ) : (
-        <p className="py-3 text-sm text-white/45">No workers yet — place a provider building to hire your first agent.</p>
-      )}
-    </div>
-  );
+}): DockItem[] {
+  if (!ctx.agents.length) {
+    return [
+      {
+        id: "no-workers",
+        label: "No workers",
+        emoji: "🪧",
+        desc: "Place a provider building to hire your first agent.",
+        disabled: true,
+      },
+    ];
+  }
+  return ctx.agents.map((a) => {
+    const p = PROVIDERS[a.provider];
+    return {
+      id: `wf-${a.id}`,
+      label: a.name,
+      art: p.agentArt,
+      accent: p.color,
+      desc: a.state,
+      onSelect: () => ctx.onOpenAgent(a.id),
+    };
+  });
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="min-w-[92px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-      <div className="text-lg font-extrabold text-white">{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-white/45">{label}</div>
-    </div>
-  );
+function soonTiles(items: { id: string; emoji: string; label: string; desc: string }[]): DockItem[] {
+  return items.map((w) => ({
+    id: w.id,
+    label: w.label,
+    emoji: w.emoji,
+    desc: w.desc,
+    badge: "soon",
+    disabled: true,
+  }));
 }
 
-function RowTiles({ items, badge }: { items: { id: string; emoji: string; label: string; desc: string }[]; badge?: string }) {
-  return (
-    <HScroll>
-      {items.map((w) => (
-        <Tile key={w.id} emoji={w.emoji} label={w.label} desc={w.desc} badge={badge} disabled />
-      ))}
-    </HScroll>
-  );
+function soonSections(sections: string[], emoji: string): DockItem[] {
+  return sections.map((s) => ({
+    id: s,
+    label: s,
+    emoji,
+    badge: "soon",
+    disabled: true,
+  }));
 }
 
-function SectionRow({ sections }: { sections: string[] }) {
-  const [active, setActive] = useState(0);
-  return (
-    <div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {sections.map((s, i) => (
-          <button
-            key={s}
-            onClick={() => setActive(i)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-              i === active ? "bg-white text-black" : "bg-white/8 text-white/70 hover:bg-white/15"
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-sm text-white/45">
-        <span className="text-xl opacity-70">✨</span>
-        <span>
-          <b className="text-white/70">{sections[active]}</b> — on the AgentVillage OS roadmap. The data model and UI slot are wired and ready.
-        </span>
-      </div>
-    </div>
-  );
+/* ---- Selected-building command center ------------------------------------ */
+
+function buildingActions(
+  b: PlacedBuilding,
+  h: {
+    onOpenBuilding: (b: PlacedBuilding) => void;
+    onMoveBuilding: (b: PlacedBuilding) => void;
+    onDuplicateBuilding: (b: PlacedBuilding) => void;
+    onDeleteBuilding: (b: PlacedBuilding) => void;
+    onChatBuilding: (b: PlacedBuilding) => void;
+    onDeselect: () => void;
+  },
+): DockItem[] {
+  const isHall = b.kind === "town-hall";
+  const items: DockItem[] = [
+    {
+      id: "act-open",
+      label: isHall ? "Open" : "Configure",
+      emoji: "⚙️",
+      onSelect: () => h.onOpenBuilding(b),
+    },
+  ];
+  if (!isHall) {
+    items.push({ id: "act-chat", label: "Chat", emoji: "💬", onSelect: () => h.onChatBuilding(b) });
+  }
+  items.push({ id: "act-move", label: "Move", emoji: "✋", onSelect: () => h.onMoveBuilding(b) });
+  items.push({ id: "act-upgrade", label: "Upgrade", emoji: "⬆️", badge: "soon", disabled: true });
+  if (!isHall) {
+    items.push({
+      id: "act-duplicate",
+      label: "Duplicate",
+      emoji: "➕",
+      onSelect: () => h.onDuplicateBuilding(b),
+    });
+  }
+  items.push({
+    id: "act-delete",
+    label: "Delete",
+    emoji: "💣",
+    danger: true,
+    onSelect: () => h.onDeleteBuilding(b),
+  });
+  return items;
 }
