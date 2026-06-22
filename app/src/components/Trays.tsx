@@ -52,12 +52,12 @@ export function DockTray({
   const meta = DOCK.find((d) => d.id === kind);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-[100px]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col">
       <div
-        className="pointer-events-auto w-[min(1040px,97vw)] animate-[trayUp_.18s_ease-out] rounded-[26px] border border-white/10 bg-[#11131c]/92 shadow-2xl backdrop-blur-xl"
-        style={{ maxHeight: "34vh" }}
+        className="pointer-events-auto w-full animate-[trayUp_.18s_ease-out] rounded-t-[26px] border-t border-white/10 bg-[#0d0f17]/95 shadow-[0_-20px_60px_-10px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+        style={{ maxHeight: "38vh" }}
       >
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-3">
+        <div className="mx-auto flex w-[min(1100px,100%)] items-center gap-3 px-5 pt-3 pb-2">
           {meta?.icon && <BrandImg src={meta.icon} alt="" className="h-9 w-9 object-contain" />}
           <div className="flex-1">
             <h3 className="text-base font-extrabold tracking-tight text-white">{trayTitle(kind)}</h3>
@@ -70,7 +70,7 @@ export function DockTray({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(34vh - 56px)" }}>
+        <div className="mx-auto w-[min(1100px,100%)] overflow-y-auto border-t border-white/8 px-5 py-4" style={{ maxHeight: "calc(38vh - 52px)" }}>
           {kind === "agents" && <AgentsTray agents={agents} onOpenAgent={onOpenAgent} />}
           {kind === "buildings" && (
             <BuildingsTray
