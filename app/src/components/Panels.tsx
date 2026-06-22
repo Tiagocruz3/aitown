@@ -1,0 +1,404 @@
+import { useEffect, useRef, useState } from "react";
+import { PROVIDERS, PROVIDER_ORDER, TOWN_HALL, type ProviderId } from "../game/data";
+import { getConfig, setConfig, hasKey, type ProviderConfig } from "../game/config";
+import { chat } from "../lib/api/chat.functions";
+import { BrandImg } from "./Modals";
+import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
+
+/* ==================================================================
+   Right-side slide-in shell. Never covers the city center — anchored
+   to the right edge, fixed width, the world stays visible at left.
+   ================================================================== */
+
+function RightPanel({
+  accent,
+  children,
+}: {
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex max-w-full p-3">
+      <div
+        className="pointer-events-auto flex w-[380px] max-w-[92vw] animate-[slideIn_.2s_ease-out] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0f1118] shadow-2xl"
+        style={{ boxShadow: `0 20px 60px -10px ${accent}55, 0 0 0 1px #ffffff10` }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Provider building settings panel                                    */
+/* ------------------------------------------------------------------ */
+
+export function BuildingPanel({
+  building,
+  onClose,
+  onToast,
+  onMove,
+  onDelete,
+  onChat,
+}: {
+  building: PlacedBuilding;
+  onClose: () => void;
+  onToast: (t: string) => void;
+  onMove: () => void;
+  onDelete: () => void;
+  onChat: () => void;
+}) {
+  const def = PROVIDERS[building.provider];
+  const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
+  const [showKey, setShowKey] = useState(false);
+  const connected = cfg.apiKey.trim().length > 0;
+
+  function save() {
+    setConfig(building.provider, cfg);
+    onToast(`${def.name} settings saved`);
+  }
+
+  return (
+    <RightPanel accent={def.color}>
+      <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${def.color}2e, transparent)` }}>
+        <BrandImg src={def.buildingArt} alt={def.name} className="h-12 w-12 object-contain" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-white">{def.name}</h2>
+          <p className="truncate text-xs text-white/55">{def.company} · provider building</p>
+        </div>
+        <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+        <button onClick={onChat} className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ background: def.color, color: def.ink }}>
+          💬 Chat {def.agent.name}
+        </button>
+        <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move</button>
+        <button
+          onClick={() => { if (confirm(`Remove ${def.name}? This dismisses ${def.agent.name}.`)) onDelete(); }}
+          className="ml-auto rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20"
+        >🗑</button>
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: connected ? "#22c55e55" : "#ffffff14", background: connected ? "#22c55e14" : "#ffffff06" }}>
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: connected ? "#22c55e" : "#9ca3af" }} />
+          <span className="font-medium text-white/85">{connected ? "Connected — live API calls" : "Not connected — mock replies"}</span>
+        </div>
+
+        <Field label="API Key" hint={`at ${hostOf(def.docsUrl)}`}>
+          <div className="flex gap-2">
+            <input
+              type={showKey ? "text" : "password"}
+              value={cfg.apiKey}
+              onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
+              placeholder={def.apiKeyHint}
+              spellCheck={false}
+              autoComplete="off"
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25"
+            />
+            <button onClick={() => setShowKey((s) => !s)} className="rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white/60 hover:bg-white/10">
+              {showKey ? "Hide" : "Show"}
+            </button>
+          </div>
+        </Field>
+
+        <Field label="API Endpoint">
+          <input value={cfg.apiBase} onChange={(e) => setCfg({ ...cfg, apiBase: e.target.value })} spellCheck={false} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25" />
+        </Field>
+
+        <Field label="Model">
+          <div className="grid grid-cols-2 gap-2">
+            {def.models.map((m) => (
+              <button key={m.id} onClick={() => setCfg({ ...cfg, model: m.id })} className="rounded-xl border px-3 py-2 text-left text-sm text-white transition" style={{ borderColor: cfg.model === m.id ? def.color : "#ffffff14", background: cfg.model === m.id ? `${def.color}22` : "#ffffff06" }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <p className="text-[11px] leading-relaxed text-white/40">
+          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats. Leave blank for mock replies.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 border-t border-white/10 p-3">
+        <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm text-white/60 hover:bg-white/10">Cancel</button>
+        <button onClick={save} className="rounded-xl px-5 py-2 text-sm font-semibold" style={{ background: def.color, color: def.ink }}>Save</button>
+      </div>
+    </RightPanel>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <label className="text-sm font-semibold text-white/80">{label}</label>
+        {hint && <span className="text-[11px] text-white/35">{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function hostOf(u: string) {
+  try { return new URL(u).host; } catch { return u; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Town Hall control-center panel (right side, tabbed)                  */
+/* ------------------------------------------------------------------ */
+
+export function TownHallPanel({
+  buildings,
+  agents,
+  onClose,
+  onOpenAgent,
+  onMove,
+  onDelete,
+}: {
+  buildings: PlacedBuilding[];
+  agents: LiveAgent[];
+  onClose: () => void;
+  onOpenAgent: (id: string) => void;
+  onMove: () => void;
+  onDelete: () => void;
+}) {
+  const [tab, setTab] = useState<string>(TOWN_HALL.tabs[0]);
+  const providerBuildings = buildings.filter((b) => b.kind !== "town-hall");
+
+  return (
+    <RightPanel accent={TOWN_HALL.color}>
+      <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${TOWN_HALL.color}33, transparent)` }}>
+        <BrandImg src={TOWN_HALL.art} alt="Town Hall" className="h-12 w-12 object-contain" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-white">Town Hall</h2>
+          <p className="text-xs text-white/55">OS control center</p>
+        </div>
+        <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
+      </div>
+
+      {/* horizontal tab strip (keeps panel narrow) */}
+      <div className="flex gap-1.5 overflow-x-auto border-b border-white/10 px-3 py-2">
+        {TOWN_HALL.tabs.map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${tab === t ? "bg-white text-black" : "bg-white/8 text-white/70 hover:bg-white/15"}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {tab === "Dashboard" && (
+          <div>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="Agents" value={agents.length} />
+              <Stat label="Buildings" value={buildings.length} />
+              <Stat label="Providers" value={new Set(providerBuildings.map((b) => b.provider)).size} />
+            </div>
+            <p className="mt-3 text-sm text-white/55">Build provider buildings to hire agents, paint roads, and run your AI company from this town.</p>
+          </div>
+        )}
+
+        {tab === "AI Providers" && (
+          <div className="grid grid-cols-2 gap-2">
+            {PROVIDER_ORDER.map((id) => {
+              const p = PROVIDERS[id];
+              const placed = providerBuildings.some((b) => b.provider === id);
+              return (
+                <div key={id} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
+                  <BrandImg src={p.buildingArt} alt={p.name} className="mx-auto h-12 w-12 object-contain" />
+                  <div className="mt-1 text-xs font-semibold text-white">{p.company}</div>
+                  <div className={`text-[10px] ${placed ? "text-emerald-300" : "text-white/40"}`}>{placed ? "● active" : "not placed"}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "Agent Registry" && (agents.length ? (
+          <div className="space-y-2">
+            {agents.map((a) => {
+              const p = PROVIDERS[a.provider];
+              return (
+                <button key={a.id} onClick={() => onOpenAgent(a.id)} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2.5 text-left hover:bg-white/10">
+                  <BrandImg src={p.agentArt} alt={p.agent.name} className="h-9 w-9 object-contain" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-white">{p.agent.name}</div>
+                    <div className="text-[11px] text-white/45">{p.agent.title}</div>
+                  </div>
+                  <span className="text-xs text-white/40">chat →</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : <RoadmapNote label="No agents registered yet" />)}
+
+        {tab === "Building Registry" && (providerBuildings.length ? (
+          <div className="grid grid-cols-2 gap-2">
+            {providerBuildings.map((b) => {
+              const p = PROVIDERS[b.provider];
+              return (
+                <div key={b.id} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
+                  <BrandImg src={p.buildingArt} alt={p.name} className="mx-auto h-12 w-12 object-contain" />
+                  <div className="mt-1 text-xs font-semibold text-white">{p.name}</div>
+                  <div className="text-[10px] text-white/40">tile {b.col},{b.row}</div>
+                </div>
+              );
+            })}
+          </div>
+        ) : <RoadmapNote label="No buildings yet" />)}
+
+        {["Integrations", "Permissions", "Billing", "System Settings"].includes(tab) && (
+          <div>
+            <RoadmapNote label={tab} />
+            {tab === "System Settings" && (
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move Town Hall</button>
+                <button onClick={() => { if (confirm("Remove the Town Hall?")) onDelete(); }} className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20">🗑 Remove</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </RightPanel>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center">
+      <div className="text-lg font-extrabold text-white">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-white/45">{label}</div>
+    </div>
+  );
+}
+
+function RoadmapNote({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-10 text-center">
+      <div className="text-3xl opacity-70">✨</div>
+      <p className="text-sm font-semibold text-white/75">{label}</p>
+      <p className="max-w-xs text-xs text-white/40">On the AgentVillage OS roadmap. The data model and UI slot are wired.</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Agent chat panel (right side, ChatGPT-style)                        */
+/* ------------------------------------------------------------------ */
+
+interface ChatMsg { from: "user" | "agent"; text: string }
+
+export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClose: () => void }) {
+  const def = PROVIDERS[provider];
+  const cfg = getConfig(provider);
+  const live = hasKey(provider);
+  const [tab, setTab] = useState<"chat" | "files" | "memory" | "tasks">("chat");
+  const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: def.agent.greeting }]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [msgs, busy]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    const next = [...msgs, { from: "user" as const, text }];
+    setMsgs(next);
+    setBusy(true);
+
+    if (live) {
+      try {
+        const data = await chat({
+          data: {
+            provider,
+            apiKey: cfg.apiKey,
+            apiBase: cfg.apiBase,
+            model: cfg.model,
+            messages: next.map((m) => ({ role: m.from === "user" ? ("user" as const) : ("assistant" as const), content: m.text })),
+            system: `You are ${def.agent.name}, the ${def.agent.title} in AgentVillage OS. Personality: ${def.agent.personality} Be ${def.agent.voice}. Keep replies concise.`,
+          },
+        });
+        if (data.error) throw new Error(data.error);
+        setMsgs((m) => [...m, { from: "agent", text: data.text || "(no response)" }]);
+      } catch (err) {
+        setMsgs((m) => [...m, { from: "agent", text: `⚠️ Couldn't reach ${def.company} (${(err as Error).message}). Check the API key in my building's settings.` }]);
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      setTimeout(() => {
+        setMsgs((m) => [...m, { from: "agent", text: mockReply(def.agent.name, def.agent.voice, text) }]);
+        setBusy(false);
+      }, 650);
+    }
+  }
+
+  return (
+    <RightPanel accent={def.color}>
+      <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${def.color}26, transparent)` }}>
+        <div className="grid h-11 w-11 place-items-center rounded-full" style={{ background: "#0006", boxShadow: `0 0 0 2px ${def.color}55` }}>
+          <BrandImg src={def.agentArt} alt={def.agent.name} className="h-10 w-10 object-contain" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-bold text-white">{def.agent.name}</h2>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: live ? "#22c55e22" : "#9ca3af22", color: live ? "#86efac" : "#cbd5e1" }}>● {live ? "live" : "demo"}</span>
+          </div>
+          <div className="text-xs text-white/50">{def.agent.title} · {def.models.find((m) => m.id === cfg.model)?.label ?? cfg.model}</div>
+        </div>
+        <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
+      </div>
+
+      {/* sub-tabs: Chat / Files / Memory / Tasks */}
+      <div className="flex gap-1.5 border-b border-white/10 px-3 py-2">
+        {(["chat", "files", "memory", "tasks"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition ${tab === t ? "bg-white text-black" : "bg-white/8 text-white/65 hover:bg-white/15"}`}>{t}</button>
+        ))}
+      </div>
+
+      {tab === "chat" ? (
+        <>
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+            {msgs.map((m, i) => (
+              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm" style={m.from === "user" ? { background: def.color, color: def.ink } : { background: "#ffffff12", color: "#f1f1f4" }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            {busy && <div className="text-xs text-white/40">{def.agent.name} is typing…</div>}
+          </div>
+          <div className="border-t border-white/10 p-3">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                rows={1}
+                placeholder={`Message ${def.agent.name}…`}
+                className="max-h-28 flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/25"
+              />
+              <button onClick={send} disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: def.color, color: def.ink }}>Send</button>
+            </div>
+            {!live && <p className="mt-2 text-center text-[11px] text-white/35">Demo mode · add an API key in {def.name}'s settings for live replies</p>}
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-4">
+          <RoadmapNote label={tab[0].toUpperCase() + tab.slice(1)} />
+        </div>
+      )}
+    </RightPanel>
+  );
+}
+
+function mockReply(name: string, voice: string, prompt: string) {
+  const p = prompt.length > 60 ? prompt.slice(0, 57) + "…" : prompt;
+  return `(${voice}) Got it — "${p}". I'm ${name}, and in demo mode I'm simulating a reply. Drop a real API key in my building's settings and I'll answer for real.`;
+}
