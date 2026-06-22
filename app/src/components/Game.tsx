@@ -130,6 +130,23 @@ export function Game() {
     setPlacing(null);
   }
 
+  // building placement and road painting are mutually exclusive tools
+  function startPlacing(p: ProviderId) {
+    setRoadTool(null);
+    setPlacing(p);
+    setDockTab(null);
+  }
+  function chooseRoadTool(t: RoadTool | null) {
+    setPlacing(null);
+    setRoadTool(t);
+  }
+  function clearRoads() {
+    roads.current = new Set();
+    setRoadCount(0);
+    persist(buildings);
+    showToast("All roads cleared");
+  }
+
   function deleteBuilding(b: PlacedBuilding) {
     setBuildings((arr) => arr.filter((x) => x.id !== b.id));
     despawnAgent(b.id);
