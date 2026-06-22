@@ -282,6 +282,7 @@ export function Game() {
         onMoveTo={moveTo}
         onPickBuilding={openBuildingById}
         onPickAgent={openAgentById}
+        onDeselect={() => setSelectedId(null)}
         onContextBuilding={(b, x, y) => setCtx({ b, x, y })}
       />
 
