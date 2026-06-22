@@ -94,3 +94,13 @@
     border-color: var(--hf-color-border-default);
   }
 }
+
+/* AgentVillage OS — non-blocking surface animations */
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes trayUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
