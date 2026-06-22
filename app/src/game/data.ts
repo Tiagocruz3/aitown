@@ -108,12 +108,12 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     apiBase: "https://api.anthropic.com/v1",
     apiKeyHint: "sk-ant-...",
     models: [
-      { id: "claude-3-7-sonnet", label: "Claude 3.7 Sonnet" },
-      { id: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
-      { id: "claude-3-5-haiku", label: "Claude 3.5 Haiku" },
-      { id: "claude-3-opus", label: "Claude 3 Opus" },
+      { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
+      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+      { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku" },
     ],
-    defaultModel: "claude-3-7-sonnet",
+    defaultModel: "claude-3-5-sonnet-20241022",
     docsUrl: "https://console.anthropic.com/settings/keys",
   },
   grok: {
