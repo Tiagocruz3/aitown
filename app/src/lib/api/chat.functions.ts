@@ -36,13 +36,13 @@ function envKey(provider: string): string {
   // Optional server-side fallback keys (set as Worker secrets / env vars).
   switch (provider) {
     case "openai":
-      return process.env.OPENAI_API_KEY ?? "";
+      return readEnv("OPENAI_API_KEY");
     case "anthropic":
-      return process.env.ANTHROPIC_API_KEY ?? "";
+      return readEnv("ANTHROPIC_API_KEY");
     case "grok":
-      return process.env.XAI_API_KEY ?? "";
+      return readEnv("XAI_API_KEY");
     case "openrouter":
-      return process.env.OPENROUTER_API_KEY ?? "";
+      return readEnv("OPENROUTER_API_KEY");
     default:
       return "";
   }
