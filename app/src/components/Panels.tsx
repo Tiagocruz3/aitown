@@ -55,6 +55,86 @@ export function BuildingPanel({
   const [showKey, setShowKey] = useState(false);
   const connected = cfg.apiKey.trim().length > 0;
 
+  const def = PROVIDERS[building.provider];
+  const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
+  const [showKey, setShowKey] = useState(false);
+  const [models, setModels] = useState<ModelOpt[]>(def.models);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const connected = cfg.apiKey.trim().length > 0;
+
+  // Fetch the provider's real model catalog using the entered key.
+  async function refreshModels(silent = false) {
+    if (!cfg.apiKey.trim()) {
+      setModelError("Enter your API key to load the live model list.");
+      return;
+    }
+    setLoadingModels(true);
+    if (!silent) setModelError(null);
+    try {
+      const res = await listModels({
+        data: { provider: building.provider, apiKey: cfg.apiKey, apiBase: cfg.apiBase },
+      });
+      if (res.error) {
+        setModelError(res.error);
+      } else if (res.models?.length) {
+        setModels(res.models);
+        setModelError(null);
+        // if current model isn't in the live list, snap to the first one
+        if (!res.models.some((m) => m.id === cfg.model)) {
+          setCfg((c) => ({ ...c, model: res.models[0].id }));
+        }
+      } else {
+        setModelError("Provider returned no models.");
+      }
+    } catch (err) {
+      setModelError((err as Error).message);
+    } finally {
+      setLoadingModels(false);
+    }
+  }
+
+  // Auto-load models once when opening a building that already has a saved key.
+  useEffect(() => {
+    if (getConfig(building.provider).apiKey.trim()) refreshModels(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [building.id]);
+
+  // Live "test connection": send a 1-token ping through the chat proxy.
+  async function testConnection() {
+    if (!cfg.apiKey.trim()) {
+      setTestState("fail");
+      setTestMsg("Enter an API key first.");
+      return;
+    }
+    setTestState("testing");
+    setTestMsg(null);
+    try {
+      const res = await chat({
+        data: {
+          provider: building.provider,
+          apiKey: cfg.apiKey,
+          apiBase: cfg.apiBase,
+          model: cfg.model,
+          system: "You are a connection tester. Reply with the single word OK.",
+          messages: [{ role: "user", content: "ping" }],
+        },
+      });
+      if (res.error) {
+        setTestState("fail");
+        setTestMsg(res.error);
+      } else {
+        setTestState("ok");
+        setTestMsg(`Connected — ${def.company} replied.`);
+      }
+    } catch (err) {
+      setTestState("fail");
+      setTestMsg((err as Error).message);
+    }
+  }
+
   function save() {
     setConfig(building.provider, cfg);
     onToast(`${def.name} settings saved`);
@@ -85,7 +165,7 @@ export function BuildingPanel({
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: connected ? "#22c55e55" : "#ffffff14", background: connected ? "#22c55e14" : "#ffffff06" }}>
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: connected ? "#22c55e" : "#9ca3af" }} />
-          <span className="font-medium text-white/85">{connected ? "Connected — live API calls" : "Not connected — mock replies"}</span>
+          <span className="font-medium text-white/85">{connected ? "Key set — live API calls enabled" : "No key — mock replies"}</span>
         </div>
 
         <Field label="API Key" hint={`at ${hostOf(def.docsUrl)}`}>
@@ -93,7 +173,7 @@ export function BuildingPanel({
             <input
               type={showKey ? "text" : "password"}
               value={cfg.apiKey}
-              onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
+              onChange={(e) => { setCfg({ ...cfg, apiKey: e.target.value }); setTestState("idle"); setTestMsg(null); }}
               placeholder={def.apiKeyHint}
               spellCheck={false}
               autoComplete="off"
@@ -109,18 +189,70 @@ export function BuildingPanel({
           <input value={cfg.apiBase} onChange={(e) => setCfg({ ...cfg, apiBase: e.target.value })} spellCheck={false} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25" />
         </Field>
 
-        <Field label="Model">
-          <div className="grid grid-cols-2 gap-2">
-            {def.models.map((m) => (
-              <button key={m.id} onClick={() => setCfg({ ...cfg, model: m.id })} className="rounded-xl border px-3 py-2 text-left text-sm text-white transition" style={{ borderColor: cfg.model === m.id ? def.color : "#ffffff14", background: cfg.model === m.id ? `${def.color}22` : "#ffffff06" }}>
-                {m.label}
-              </button>
-            ))}
+        <Field
+          label="Model"
+          hint={loadingModels ? "loading…" : models.length ? `${models.length} available` : undefined}
+        >
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <select
+                value={cfg.model}
+                onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
+                className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-9 text-sm text-white outline-none focus:border-white/25"
+                style={{ borderColor: `${def.color}66` }}
+              >
+                {/* ensure the current model is selectable even if not in the list */}
+                {!models.some((m) => m.id === cfg.model) && cfg.model && (
+                  <option value={cfg.model}>{cfg.model}</option>
+                )}
+                {models.map((m) => (
+                  <option key={m.id} value={m.id} className="bg-[#11131c]">
+                    {m.label}{m.label !== m.id ? ` — ${m.id}` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
+            </div>
+            <button
+              onClick={() => refreshModels(false)}
+              disabled={loadingModels}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-white/70 hover:bg-white/10 disabled:opacity-50"
+              title="Fetch the live model list from the provider"
+            >
+              {loadingModels ? "…" : "↻ Models"}
+            </button>
           </div>
+          {modelError && (
+            <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">{modelError}</p>
+          )}
         </Field>
 
+        {/* Test connection */}
+        <div>
+          <button
+            onClick={testConnection}
+            disabled={testState === "testing"}
+            className="w-full rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-60"
+            style={{
+              borderColor: testState === "ok" ? "#22c55e66" : testState === "fail" ? "#ef444466" : "#ffffff1a",
+              background: testState === "ok" ? "#22c55e14" : testState === "fail" ? "#ef444414" : "#ffffff06",
+              color: "#fff",
+            }}
+          >
+            {testState === "testing" ? "Testing…" : testState === "ok" ? "✓ Connection works" : testState === "fail" ? "✗ Test failed — retry" : "Test connection"}
+          </button>
+          {testMsg && (
+            <p
+              className="mt-1.5 break-words rounded-lg px-2.5 py-1.5 text-[11px]"
+              style={{ background: testState === "ok" ? "#22c55e14" : "#ef444414", color: testState === "ok" ? "#86efac" : "#fca5a5" }}
+            >
+              {testMsg}
+            </p>
+          )}
+        </div>
+
         <p className="text-[11px] leading-relaxed text-white/40">
-          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats. Leave blank for mock replies.
+          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats or you test the connection. Leave blank for mock replies.
         </p>
       </div>
 
