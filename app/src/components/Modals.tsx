@@ -12,10 +12,16 @@ export function BuildingModal({
   building,
   onClose,
   onToast,
+  onMove,
+  onDelete,
+  onChat,
 }: {
   building: PlacedBuilding;
   onClose: () => void;
   onToast: (t: string) => void;
+  onMove: () => void;
+  onDelete: () => void;
+  onChat: () => void;
 }) {
   const def = PROVIDERS[building.provider];
   const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
