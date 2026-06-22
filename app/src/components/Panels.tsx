@@ -157,6 +157,7 @@ export function BuildingPanel({
   function save() {
     setConfig(building.provider, cfg);
     onToast(`${def.name} settings saved`);
+    onSaved?.();
   }
 
   return (
