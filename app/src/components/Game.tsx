@@ -72,7 +72,7 @@ export function Game() {
     agents.current.push({
       id: b.id,
       provider: b.provider,
-      name: def.agent.name,
+      name: agentNameOf(b.provider),
       art: def.agentArt,
       homeCol: b.col,
       homeRow: b.row,
