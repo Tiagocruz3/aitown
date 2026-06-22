@@ -446,9 +446,9 @@ export function Game() {
         {GRID_HELP}
       </div>
 
-      {/* ===== Centered dock modals ===== */}
+      {/* ===== Bottom tray (the dock expands upward into this) ===== */}
       {dockModal && (
-        <DockModal
+        <DockTray
           kind={dockModal}
           buildings={buildings}
           agents={liveAgents}
@@ -458,10 +458,7 @@ export function Game() {
           onClose={() => setDockModal(null)}
           onPlaceProvider={startPlacingProvider}
           onPlaceTownHall={startPlacingTownHall}
-          onOpenAgent={(id) => {
-            setDockModal(null);
-            openAgentById(id);
-          }}
+          onOpenAgent={(id) => openAgentById(id)}
           onRoadTool={chooseRoadTool}
           onClearRoads={clearRoads}
         />
