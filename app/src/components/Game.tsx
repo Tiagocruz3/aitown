@@ -325,7 +325,7 @@ export function Game() {
       </div>
 
       {/* empty-state hint */}
-      {buildings.length === 0 && !placing && (
+      {buildings.length === 0 && !placing && !dockModal && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="pointer-events-auto rounded-3xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
             <div className="text-3xl">🏗️</div>
