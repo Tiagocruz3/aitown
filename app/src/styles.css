@@ -104,3 +104,13 @@
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+/* Centered modal (agent chat) — distinct from the right-side settings panels */
+@keyframes popIn {
+  from { transform: scale(0.96) translateY(8px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+/* Full-screen management screens (Workforce, Marketplace, …) */
+@keyframes screenIn {
+  from { transform: scale(0.985); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

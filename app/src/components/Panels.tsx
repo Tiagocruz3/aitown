@@ -57,6 +57,34 @@ function RightPanel({
   );
 }
 
+/* ==================================================================
+   Centered modal shell — used ONLY for agent chat, so chatting feels
+   different from the right-edge build-settings panels. Sits in the
+   middle of the screen over a dimmed backdrop for easy focus.
+   ================================================================== */
+
+function CenterModal({
+  accent,
+  onClose,
+  children,
+}: {
+  accent: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center p-3 sm:p-6">
+      <div className="absolute inset-0 bg-[#0b0d14]/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative z-10 flex h-[min(660px,90vh)] w-[min(540px,96vw)] animate-[popIn_.18s_ease-out] flex-col overflow-hidden rounded-[28px] border border-white/12 bg-[#0f1118] shadow-2xl"
+        style={{ boxShadow: `0 30px 90px -10px ${accent}66, 0 0 0 1px #ffffff14` }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Provider building settings panel                                    */
 /* ------------------------------------------------------------------ */
@@ -595,7 +623,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
   ];
 
   return (
-    <RightPanel accent={def.color}>
+    <CenterModal accent={def.color} onClose={onClose}>
       <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${def.color}26, transparent)` }}>
         <div className="grid h-11 w-11 place-items-center rounded-full" style={{ background: "#0006", boxShadow: `0 0 0 2px ${def.color}55` }}>
           <BrandImg src={def.agentArt} alt={def.agent.name} className="h-10 w-10 object-contain" />
@@ -710,7 +738,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
           <RoadmapNote label={tab[0].toUpperCase() + tab.slice(1)} />
         </div>
       )}
-    </RightPanel>
+    </CenterModal>
   );
 }
 

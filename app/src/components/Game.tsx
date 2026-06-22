@@ -7,6 +7,7 @@ import {
 } from "./GameCanvas";
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
 import { Dock } from "./Trays";
+import { FullscreenView } from "./Screens";
 import { ContextMenu, BrandImg } from "./Modals";
 import { agentNameOf } from "../game/config";
 import {
@@ -14,6 +15,7 @@ import {
   PROVIDER_ORDER,
   GRID_HELP,
   TOWN_HALL,
+  type DockKind,
   type ProviderId,
 } from "../game/data";
 
@@ -32,9 +34,11 @@ export function Game() {
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
-  // Menu-stack navigation for the fixed dock. Empty = main menu; each entry
-  // drills one level deeper (e.g. ["buildings"], ["integrations", "grp-AI Providers"]).
+  // Menu-stack navigation for the fixed dock. Empty = main menu; ["buildings"]
+  // drills into the placement submenu (the only category that stays in-dock).
   const [dockPath, setDockPath] = useState<string[]>([]);
+  // Full-screen management/catalog view (Workforce, Marketplace, …) or null.
+  const [fullscreen, setFullscreen] = useState<DockKind | null>(null);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -261,15 +265,27 @@ export function Game() {
   // full settings panel only opens via the dock's "Configure" action.
   function selectBuilding(b: PlacedBuilding) {
     setDockPath([]);
+    setFullscreen(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenAgentId(null);
     setSelectedId(b.id);
   }
 
+  // Open a roomy full-screen management screen (Workforce, Marketplace, …).
+  function openFullscreen(kind: DockKind) {
+    setDockPath([]);
+    setSelectedId(null);
+    setOpenBuilding(null);
+    setOpenTownHall(null);
+    setOpenAgentId(null);
+    setFullscreen(kind);
+  }
+
   // open a building (route town-hall to its own panel); resets the dock
   function openBuildingById(b: PlacedBuilding) {
     setDockPath([]);
+    setFullscreen(null);
     setSelectedId(b.id);
     if (b.kind === "town-hall") {
       setOpenBuilding(null);
@@ -282,6 +298,8 @@ export function Game() {
 
   function openAgentById(id: string) {
     setDockPath([]);
+    setFullscreen(null);
+    setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenAgentId(id);
@@ -291,9 +309,10 @@ export function Game() {
     if (a) openAgentById(a.id);
   }
 
-  // Navigate the dock menu stack; entering a submenu closes any right panel.
+  // Navigate the dock menu stack; entering a submenu closes any open surface.
   function navigateDock(path: string[]) {
     if (path.length) {
+      setFullscreen(null);
       setOpenBuilding(null);
       setOpenTownHall(null);
       setOpenAgentId(null);
@@ -342,7 +361,7 @@ export function Game() {
       </div>
 
       {/* empty-state hint */}
-      {buildings.length === 0 && !placing && dockPath.length === 0 && !selected && (
+      {buildings.length === 0 && !placing && dockPath.length === 0 && !selected && !fullscreen && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="pointer-events-auto rounded-3xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
             <div className="text-3xl">🏗️</div>
@@ -422,22 +441,19 @@ export function Game() {
       {/* ===== Dynamic dock — fixed-size game toolbar with menu-stack nav ===== */}
       {/* While moving a building the dock collapses to the main menu so the */}
       {/* map stays the focus; a selected building turns it into a command center. */}
-      {!movingId && (
+      {!movingId && !fullscreen && (
         <Dock
           path={dockPath}
           onNavigate={navigateDock}
-          buildings={buildings}
-          agents={liveAgents}
           roadCount={roadCount}
           roadTool={roadTool}
           hasTownHall={hasTownHall}
-          placing={!!placing}
           selected={selected}
           onPlaceProvider={startPlacingProvider}
           onPlaceTownHall={startPlacingTownHall}
-          onOpenAgent={(id) => openAgentById(id)}
           onRoadTool={chooseRoadTool}
           onClearRoads={clearRoads}
+          onOpenFullscreen={openFullscreen}
           onOpenBuilding={openBuildingById}
           onMoveBuilding={startMoving}
           onDuplicateBuilding={duplicateBuilding}
@@ -447,6 +463,17 @@ export function Game() {
           }}
           onChatBuilding={(b) => openAgentByProvider(b.provider)}
           onDeselect={() => setSelectedId(null)}
+        />
+      )}
+
+      {/* ===== Full-screen management screens (Workforce, Marketplace, …) ===== */}
+      {fullscreen && (
+        <FullscreenView
+          kind={fullscreen}
+          buildings={buildings}
+          agents={liveAgents}
+          onOpenAgent={(id) => openAgentById(id)}
+          onClose={() => setFullscreen(null)}
         />
       )}
 

@@ -2,18 +2,12 @@ import { BrandImg } from "./Modals";
 import {
   PROVIDERS,
   DOCK,
-  AGENT_LIBRARY,
   BUILDING_LIBRARY,
-  WORKFLOWS,
-  INTEGRATIONS,
-  MISSION_SECTIONS,
-  ASSET_SECTIONS,
-  MARKETPLACE_SECTIONS,
-  WORLD_SECTIONS,
   TOWN_HALL,
+  type DockKind,
   type ProviderId,
 } from "../game/data";
-import type { PlacedBuilding, LiveAgent, RoadTool } from "./GameCanvas";
+import type { PlacedBuilding, RoadTool } from "./GameCanvas";
 
 /* ==================================================================
    DYNAMIC DOCK — a fixed-size game toolbar (SimCity / Clash style).
@@ -44,18 +38,15 @@ export interface DockItem {
 export function Dock({
   path,
   onNavigate,
-  buildings,
-  agents,
   roadCount,
   roadTool,
   hasTownHall,
-  placing,
   selected,
   onPlaceProvider,
   onPlaceTownHall,
-  onOpenAgent,
   onRoadTool,
   onClearRoads,
+  onOpenFullscreen,
   onOpenBuilding,
   onMoveBuilding,
   onDuplicateBuilding,
@@ -65,18 +56,15 @@ export function Dock({
 }: {
   path: string[];
   onNavigate: (path: string[]) => void;
-  buildings: PlacedBuilding[];
-  agents: LiveAgent[];
   roadCount: number;
   roadTool: RoadTool | null;
   hasTownHall: boolean;
-  placing: boolean;
   selected: PlacedBuilding | null;
   onPlaceProvider: (p: ProviderId) => void;
   onPlaceTownHall: () => void;
-  onOpenAgent: (id: string) => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
+  onOpenFullscreen: (kind: DockKind) => void;
   onOpenBuilding: (b: PlacedBuilding) => void;
   onMoveBuilding: (b: PlacedBuilding) => void;
   onDuplicateBuilding: (b: PlacedBuilding) => void;
@@ -101,17 +89,14 @@ export function Dock({
   }
 
   const roots = buildRoots({
-    buildings,
-    agents,
     roadCount,
     roadTool,
     hasTownHall,
-    placing,
     onPlaceProvider,
     onPlaceTownHall,
-    onOpenAgent,
     onRoadTool,
     onClearRoads,
+    onOpenFullscreen,
   });
 
   // Resolve the current level by walking the freshly-built tree by id, so
@@ -225,66 +210,26 @@ function Glyph({ emoji, icon, art }: { emoji?: string; icon?: string; art?: stri
 
 /* ---- Menu tree ----------------------------------------------------------- */
 
-// Build the root dock categories with their (live) submenus. Rebuilt on every
-// render so tiles always reflect current buildings / agents / road state.
+// Build the root dock categories. Only Buildings drills into a dock submenu
+// (placement needs the map visible); every management/catalog category opens a
+// roomy full-screen view instead. Rebuilt each render so tiles stay live.
 function buildRoots(ctx: {
-  buildings: PlacedBuilding[];
-  agents: LiveAgent[];
   roadCount: number;
   roadTool: RoadTool | null;
   hasTownHall: boolean;
-  placing: boolean;
   onPlaceProvider: (p: ProviderId) => void;
   onPlaceTownHall: () => void;
-  onOpenAgent: (id: string) => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
+  onOpenFullscreen: (kind: DockKind) => void;
 }): DockItem[] {
-  const childrenFor: Record<string, DockItem[]> = {
-    agents: agentsMenu(ctx),
-    buildings: buildingsMenu(ctx),
-    workflows: soonTiles(WORKFLOWS),
-    integrations: integrationsMenu(),
-    workforce: workforceMenu(ctx),
-    missions: soonSections(MISSION_SECTIONS, "📋"),
-    assets: soonSections(ASSET_SECTIONS, "📦"),
-    marketplace: soonSections(MARKETPLACE_SECTIONS, "🛒"),
-    world: soonSections(WORLD_SECTIONS, "🌍"),
-  };
-
-  return DOCK.map((d) => ({
-    id: d.id,
-    label: d.label,
-    icon: d.icon,
-    emoji: d.emoji,
-    children: childrenFor[d.id] ?? [],
-  }));
-}
-
-function agentsMenu(ctx: {
-  agents: LiveAgent[];
-  onOpenAgent: (id: string) => void;
-}): DockItem[] {
-  const live: DockItem[] = ctx.agents.map((a) => {
-    const p = PROVIDERS[a.provider];
-    return {
-      id: `agent-${a.id}`,
-      label: a.name,
-      art: p.agentArt,
-      accent: p.color,
-      desc: p.agent.title,
-      onSelect: () => ctx.onOpenAgent(a.id),
-    };
+  return DOCK.map((d) => {
+    const base = { id: d.id, label: d.label, icon: d.icon, emoji: d.emoji };
+    if (d.id === "buildings") {
+      return { ...base, children: buildingsMenu(ctx) };
+    }
+    return { ...base, onSelect: () => ctx.onOpenFullscreen(d.id) };
   });
-  const library: DockItem[] = AGENT_LIBRARY.map((a) => ({
-    id: a.id,
-    label: a.label,
-    emoji: a.emoji,
-    desc: a.desc,
-    badge: "soon",
-    disabled: true,
-  }));
-  return [...live, ...library];
 }
 
 function buildingsMenu(ctx: {
@@ -353,71 +298,6 @@ function buildingsMenu(ctx: {
   };
 
   return [townHall, ...placeable, roads];
-}
-
-function integrationsMenu(): DockItem[] {
-  return INTEGRATIONS.map((grp) => ({
-    id: `grp-${grp.group}`,
-    label: grp.group,
-    emoji: "🔌",
-    desc: `${grp.items.length} integrations`,
-    children: grp.items.map((it) => ({
-      id: it.id,
-      label: it.label,
-      emoji: it.emoji,
-      badge: "soon",
-      disabled: true,
-    })),
-  }));
-}
-
-function workforceMenu(ctx: {
-  agents: LiveAgent[];
-  onOpenAgent: (id: string) => void;
-}): DockItem[] {
-  if (!ctx.agents.length) {
-    return [
-      {
-        id: "no-workers",
-        label: "No workers",
-        emoji: "🪧",
-        desc: "Place a provider building to hire your first agent.",
-        disabled: true,
-      },
-    ];
-  }
-  return ctx.agents.map((a) => {
-    const p = PROVIDERS[a.provider];
-    return {
-      id: `wf-${a.id}`,
-      label: a.name,
-      art: p.agentArt,
-      accent: p.color,
-      desc: a.state,
-      onSelect: () => ctx.onOpenAgent(a.id),
-    };
-  });
-}
-
-function soonTiles(items: { id: string; emoji: string; label: string; desc: string }[]): DockItem[] {
-  return items.map((w) => ({
-    id: w.id,
-    label: w.label,
-    emoji: w.emoji,
-    desc: w.desc,
-    badge: "soon",
-    disabled: true,
-  }));
-}
-
-function soonSections(sections: string[], emoji: string): DockItem[] {
-  return sections.map((s) => ({
-    id: s,
-    label: s,
-    emoji,
-    badge: "soon",
-    disabled: true,
-  }));
 }
 
 /* ---- Selected-building command center ------------------------------------ */
