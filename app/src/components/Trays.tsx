@@ -52,10 +52,10 @@ export function DockTray({
   const meta = DOCK.find((d) => d.id === kind);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-[100px]">
       <div
         className="pointer-events-auto w-[min(1040px,97vw)] animate-[trayUp_.18s_ease-out] rounded-[26px] border border-white/10 bg-[#11131c]/92 shadow-2xl backdrop-blur-xl"
-        style={{ maxHeight: "46vh" }}
+        style={{ maxHeight: "42vh" }}
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-5 py-3">
           {meta?.icon && <BrandImg src={meta.icon} alt="" className="h-9 w-9 object-contain" />}
