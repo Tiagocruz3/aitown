@@ -84,7 +84,7 @@ export const listModels = createServerFn({ method: "POST" })
   });
 
 export const chat = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => ChatInput.parse(d))
+  .inputValidator((d: unknown) => d as z.infer<typeof ChatInput>)
   .handler(async ({ data }) => {
     const key = (data.apiKey || envKey(data.provider)).trim();
     if (!key) return { text: "", error: "No API key configured for this provider." };
