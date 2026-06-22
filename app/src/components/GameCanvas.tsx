@@ -59,6 +59,7 @@ interface Props {
   onMoveTo: (id: string, col: number, row: number) => void;
   onPickBuilding: (b: PlacedBuilding) => void;
   onPickAgent: (id: string) => void;
+  onDeselect: () => void;
   onContextBuilding: (b: PlacedBuilding, sx: number, sy: number) => void;
 }
 
@@ -74,6 +75,7 @@ export function GameCanvas({
   onMoveTo,
   onPickBuilding,
   onPickAgent,
+  onDeselect,
   onContextBuilding,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
