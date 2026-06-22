@@ -10,21 +10,22 @@ import {
   isReady,
   type Camera,
 } from "../game/iso";
-import { BUILDINGS, type BuildingKind } from "../game/data";
+import { PROVIDERS, type ProviderId } from "../game/data";
 
 export interface PlacedBuilding {
   id: string;
-  kind: BuildingKind;
+  provider: ProviderId;
   col: number;
   row: number;
 }
 
 export interface LiveAgent {
-  id: string;
-  role: string;
+  id: string; // same id as the owning building
+  provider: ProviderId;
   name: string;
   art: string;
-  // continuous position in grid space
+  homeCol: number;
+  homeRow: number;
   col: number;
   row: number;
   target: { col: number; row: number };
@@ -36,7 +37,7 @@ export interface LiveAgent {
 interface Props {
   buildings: PlacedBuilding[];
   agents: React.MutableRefObject<LiveAgent[]>;
-  placing: BuildingKind | null;
+  placing: ProviderId | null;
   onPlace: (col: number, row: number) => void;
   onPickBuilding: (b: PlacedBuilding) => void;
   onPickAgent: (id: string) => void;
@@ -68,7 +69,6 @@ export function GameCanvas({
   const cbRef = useRef({ onPlace, onPickBuilding, onPickAgent, onContextBuilding });
   cbRef.current = { onPlace, onPickBuilding, onPickAgent, onContextBuilding };
 
-  // hit-test: which building is at a grid cell
   const buildingAt = useCallback((col: number, row: number) => {
     return buildingsRef.current.find((b) => b.col === col && b.row === row);
   }, []);
@@ -91,11 +91,22 @@ export function GameCanvas({
     resize();
     window.addEventListener("resize", resize);
 
-    // preload all art
-    Object.values(BUILDINGS).forEach((b) => loadImage(b.art));
+    // preload all provider art
+    Object.values(PROVIDERS).forEach((p) => {
+      loadImage(p.buildingArt);
+      loadImage(p.agentArt);
+    });
     agents.current.forEach((a) => loadImage(a.art));
 
-    function drawTile(col: number, row: number, cam: Camera, cw: number, ch: number, fill: string, stroke?: string) {
+    function drawTile(
+      col: number,
+      row: number,
+      cam: Camera,
+      cw: number,
+      ch: number,
+      fill: string,
+      stroke?: string,
+    ) {
       const iso = gridToIso(col, row);
       const c = isoToScreen(iso.x, iso.y, cam, cw, ch);
       const hw = (TILE_W / 2) * cam.zoom;
@@ -123,7 +134,6 @@ export function GameCanvas({
       const cw = canvas.clientWidth;
       const ch = canvas.clientHeight;
 
-      // sky gradient background
       const g = ctx!.createLinearGradient(0, 0, 0, ch);
       g.addColorStop(0, "#8fd3ff");
       g.addColorStop(0.55, "#bfe9c9");
@@ -131,7 +141,6 @@ export function GameCanvas({
       ctx!.fillStyle = g;
       ctx!.fillRect(0, 0, cw, ch);
 
-      // ground tiles (checker grass)
       for (let r = 0; r < GRID; r++) {
         for (let c = 0; c < GRID; c++) {
           const even = (r + c) % 2 === 0;
@@ -139,7 +148,6 @@ export function GameCanvas({
         }
       }
 
-      // hover / placement highlight
       const hov = hoverRef.current;
       if (hov && hov.col >= 0 && hov.row >= 0 && hov.col < GRID && hov.row < GRID) {
         const occupied = !!buildingAt(hov.col, hov.row);
@@ -150,30 +158,40 @@ export function GameCanvas({
           cam,
           cw,
           ch,
-          placingRef.current ? (ok ? "rgba(80,200,120,0.55)" : "rgba(230,80,80,0.55)") : "rgba(255,255,255,0.28)",
+          placingRef.current
+            ? ok
+              ? "rgba(80,200,120,0.55)"
+              : "rgba(230,80,80,0.55)"
+            : "rgba(255,255,255,0.28)",
           "rgba(255,255,255,0.9)",
         );
       }
 
-      // collect drawables (buildings + agents), sort by depth (col+row, then y)
       type Draw = { depth: number; y: number; fn: () => void };
       const draws: Draw[] = [];
 
       for (const b of buildingsRef.current) {
-        const def = BUILDINGS[b.kind];
+        const def = PROVIDERS[b.provider];
         const iso = gridToIso(b.col, b.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
-        const img = isReady(def.art) ? loadImage(def.art) : null;
+        const img = isReady(def.buildingArt) ? loadImage(def.buildingArt) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         draws.push({
           depth: b.col + b.row,
           y: s.y,
           fn: () => {
+            // brand glow pad under the building
+            ctx!.save();
+            ctx!.globalAlpha = 0.35;
+            ctx!.fillStyle = def.color;
+            ctx!.beginPath();
+            ctx!.ellipse(s.x, s.y, w * 0.42, w * 0.2, 0, 0, Math.PI * 2);
+            ctx!.fill();
+            ctx!.restore();
             if (img) {
               const h = w * (img.height / img.width);
               ctx!.drawImage(img, s.x - w / 2, s.y - h + TILE_H * 0.5 * cam.zoom, w, h);
             } else {
-              // fallback block
               ctx!.fillStyle = def.color;
               ctx!.fillRect(s.x - w / 4, s.y - w * 0.6, w / 2, w * 0.6);
             }
@@ -181,20 +199,17 @@ export function GameCanvas({
         });
       }
 
-      // update + draw agents
       for (const a of agents.current) {
         if (a.state === "work") {
           a.wait -= dt;
-          if (a.wait <= 0) {
-            a.state = "idle";
-          }
+          if (a.wait <= 0) a.state = "idle";
         } else if (a.state === "idle") {
           a.wait -= dt;
           if (a.wait <= 0) {
-            // pick a new wander target on the grid
+            // wander near home so agents stay around their building
             a.target = {
-              col: Math.floor(Math.random() * GRID),
-              row: Math.floor(Math.random() * GRID),
+              col: clamp(a.homeCol + (Math.random() * 6 - 3), 0, GRID - 1),
+              row: clamp(a.homeRow + (Math.random() * 6 - 3), 0, GRID - 1),
             };
             a.state = "walk";
           }
@@ -214,13 +229,13 @@ export function GameCanvas({
         const iso = gridToIso(a.col, a.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(a.art) ? loadImage(a.art) : null;
+        const prov = PROVIDERS[a.provider];
         const w = TILE_W * 0.62 * cam.zoom;
         const bob = a.state === "walk" ? Math.sin(now / 120) * 2 * cam.zoom : 0;
         draws.push({
           depth: a.col + a.row + 0.5,
           y: s.y,
           fn: () => {
-            // shadow
             ctx!.fillStyle = "rgba(0,0,0,0.18)";
             ctx!.beginPath();
             ctx!.ellipse(s.x, s.y, w * 0.28, w * 0.12, 0, 0, Math.PI * 2);
@@ -234,17 +249,24 @@ export function GameCanvas({
               ctx!.arc(s.x, s.y - w * 0.5, w * 0.3, 0, Math.PI * 2);
               ctx!.fill();
             }
-            // name tag
-            ctx!.font = `${Math.max(9, 12 * cam.zoom)}px ui-sans-serif, system-ui`;
+            const imgH = img ? w * (img.height / img.width) : w;
+            // working indicator
+            if (a.state === "work") {
+              ctx!.font = `${Math.max(10, 14 * cam.zoom)}px ui-sans-serif, system-ui`;
+              ctx!.textAlign = "center";
+              ctx!.fillText("⚙️", s.x, s.y - imgH - 16 + bob);
+            }
+            // brand name tag
+            ctx!.font = `600 ${Math.max(9, 12 * cam.zoom)}px ui-sans-serif, system-ui`;
             ctx!.textAlign = "center";
             const tag = a.name;
-            const tw = ctx!.measureText(tag).width + 12;
-            const ty = s.y - w * (img ? (img.height / img.width) : 1) - 6 + bob;
-            ctx!.fillStyle = "rgba(20,20,30,0.78)";
-            roundRect(ctx!, s.x - tw / 2, ty - 14, tw, 16, 6);
+            const tw = ctx!.measureText(tag).width + 14;
+            const ty = s.y - imgH - 4 + bob;
+            ctx!.fillStyle = prov.color;
+            roundRect(ctx!, s.x - tw / 2, ty - 15, tw, 17, 7);
             ctx!.fill();
-            ctx!.fillStyle = "#fff";
-            ctx!.fillText(tag, s.x, ty - 2);
+            ctx!.fillStyle = prov.ink;
+            ctx!.fillText(tag, s.x, ty - 3);
           },
         });
       }
@@ -256,7 +278,6 @@ export function GameCanvas({
     }
     raf = requestAnimationFrame(frame);
 
-    // --- input handlers ---
     function getPos(e: MouseEvent) {
       const rect = canvas!.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -288,17 +309,22 @@ export function GameCanvas({
       const cam = camRef.current;
       const cell = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
 
-      // placing mode
       if (placingRef.current) {
-        if (cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID && !buildingAt(cell.col, cell.row)) {
+        if (
+          cell.col >= 0 &&
+          cell.row >= 0 &&
+          cell.col < GRID &&
+          cell.row < GRID &&
+          !buildingAt(cell.col, cell.row)
+        ) {
           cbRef.current.onPlace(cell.col, cell.row);
         }
         return;
       }
 
-      // agent click? (check proximity in screen space)
+      // agent click first (they sit on top)
       let pickedAgent: string | null = null;
-      let bestD = 40;
+      let bestD = 42;
       for (const a of agents.current) {
         const iso = gridToIso(a.col, a.row);
         const s = isoToScreen(iso.x, iso.y, cam, canvas!.clientWidth, canvas!.clientHeight);
@@ -349,6 +375,10 @@ export function GameCanvas({
   }, [agents, buildingAt]);
 
   return <canvas ref={canvasRef} className="block h-full w-full cursor-grab active:cursor-grabbing" />;
+}
+
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
