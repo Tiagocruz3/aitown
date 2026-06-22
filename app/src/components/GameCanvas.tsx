@@ -111,8 +111,8 @@ export function GameCanvas({
       for (const b of sorted) {
         const iso = gridToIso(b.col, b.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
-        const def = PROVIDERS[b.provider];
-        const img = isReady(def.buildingArt) ? loadImage(def.buildingArt) : null;
+        const art = buildingArtOf(b);
+        const img = isReady(art) ? loadImage(art) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const h = img ? w * (img.height / img.width) : w;
         const top = s.y - h + TILE_H * 0.5 * cam.zoom;
