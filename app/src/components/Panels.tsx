@@ -628,7 +628,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
                 </div>
               </div>
             ))}
-            {busy && <div className="text-xs text-white/40">{def.agent.name} is typing…</div>}
+            {busy && <div className="text-xs text-white/40">{agentName} is typing…</div>}
           </div>
           <div className="border-t border-white/10 p-3">
             <div className="flex items-end gap-2">
