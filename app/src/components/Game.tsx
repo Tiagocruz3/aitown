@@ -16,6 +16,7 @@ export function Game() {
   const [buildings, setBuildings] = useState<PlacedBuilding[]>([]);
   const [placing, setPlacing] = useState<ProviderId | null>(null);
   const [roadTool, setRoadTool] = useState<RoadTool | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [roadCount, setRoadCount] = useState(0);
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openAgent, setOpenAgent] = useState<ProviderId | null>(null);
