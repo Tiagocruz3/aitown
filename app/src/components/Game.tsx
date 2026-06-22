@@ -185,6 +185,7 @@ export function Game() {
         <div className="pointer-events-auto flex gap-2">
           <Pill icon="💬" label={`${liveAgents.length} Agents`} />
           <Pill icon="🏢" label={`${buildings.length} Buildings`} />
+          <Pill icon="🛣️" label={`${roadCount} Roads`} />
         </div>
       </div>
 
