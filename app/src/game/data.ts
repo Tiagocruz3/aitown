@@ -183,19 +183,18 @@ export const PROVIDER_ORDER: ProviderId[] = [
 
 // ---- Dock -------------------------------------------------------------------
 
-// Town Star-style rendered dock icons (glossy 3D, transparent PNG).
+// Town Star-style rendered dock icons (glossy 3D, transparent PNG, lightweight).
+const ICONCDN = "https://d2ol7oe51mr4n9.cloudfront.net/user_3FNORjZACwRQB6VtB4tX0jmJWhf/";
 export const DOCK_ICONS = {
-  agents: CDN + "hf_20260622_091949_0c28e160-7a85-465b-af5d-87a9302ba757.png",
-  buildings: CDN + "hf_20260622_091951_a48c5078-bd9a-4855-965d-9e1eab6e4d95.png",
-  workflows: CDN + "hf_20260622_091953_4a135791-fd17-49d4-bd59-b821db101e88.png",
-  integrations:
-    CDN + "hf_20260622_091957_21a3f884-be1f-403a-be93-84e5c470a96e.png",
-  workforce: CDN + "hf_20260622_091959_b38446cc-0ae6-4a9f-acc6-4b0d5aec5eee.png",
-  missions: CDN + "hf_20260622_092001_bc644f75-da91-4097-a10d-0567fc8939d9.png",
-  assets: CDN + "hf_20260622_092003_7967c902-d359-434c-99fd-8db19123558c.png",
-  marketplace:
-    CDN + "hf_20260622_092005_b0c4c365-b2e8-4b9c-b129-e31d8235c74e.png",
-  world: CDN + "hf_20260622_092008_1dad692a-ff19-43dd-be4d-a0c1786454e5.png",
+  agents: ICONCDN + "fb616f2e-7d8b-411e-b36f-a0ab8a57bd77.png",
+  buildings: ICONCDN + "f5a848a7-e483-42bd-b5e5-17a8e87477d5.png",
+  workflows: ICONCDN + "df2f515c-1c8a-4b67-9d38-576a211bb911.png",
+  integrations: ICONCDN + "1291b70e-8f08-4a87-b17d-bccd13267d02.png",
+  workforce: ICONCDN + "4abfe8c9-5c90-4c1a-9f43-82d6585af778.png",
+  missions: ICONCDN + "4d057146-8708-4ae0-956e-4b05b1702c9c.png",
+  assets: ICONCDN + "ce840721-69e5-4ab1-a89a-4c4d9bbc29f5.png",
+  marketplace: ICONCDN + "4712214e-598f-4e39-96b7-539179b0ebd8.png",
+  world: ICONCDN + "eca13e72-4b65-4a15-baf2-237cff4e0180.png",
 } as const;
 
 // Modal kinds opened by each dock category.
