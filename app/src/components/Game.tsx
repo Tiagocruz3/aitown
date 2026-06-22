@@ -89,6 +89,14 @@ export function Game() {
     agents.current = agents.current.filter((a) => a.id !== buildingId);
   }
 
+  // Pull the latest (possibly custom) agent names from config into live agents.
+  function syncAgentNames() {
+    agents.current.forEach((a) => {
+      a.name = agentNameOf(a.provider);
+    });
+    bump();
+  }
+
   // load save & reconcile agents to buildings (enforces "no building, no agents")
   useEffect(() => {
     let initial: PlacedBuilding[] = [];
