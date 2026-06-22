@@ -10,6 +10,7 @@ import {
   deleteProject,
   titleFromMessages,
   type ChatSession,
+  type AgentStore,
 } from "../game/chatStore";
 import { BrandImg } from "./Modals";
 import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
