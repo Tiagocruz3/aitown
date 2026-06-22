@@ -77,15 +77,44 @@ export function GameCanvas({
   const placingRef = useRef(placing);
   const buildingsRef = useRef(buildings);
   const roadToolRef = useRef(roadTool);
+  const movingRef = useRef(movingId);
   placingRef.current = placing;
   buildingsRef.current = buildings;
   roadToolRef.current = roadTool;
-  const cbRef = useRef({ onPlace, onPaintRoad, onPickBuilding, onPickAgent, onContextBuilding });
-  cbRef.current = { onPlace, onPaintRoad, onPickBuilding, onPickAgent, onContextBuilding };
+  movingRef.current = movingId;
+  const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onContextBuilding });
+  cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onContextBuilding };
 
   const buildingAt = useCallback((col: number, row: number) => {
     return buildingsRef.current.find((b) => b.col === col && b.row === row);
   }, []);
+
+  // Hit-test a screen point against the rendered building sprites (top-most first).
+  // Buildings draw ~1.5 tiles wide and tall with an upward offset, so a plain
+  // tile lookup misses the visible body — we test the actual sprite rectangle.
+  const buildingAtScreen = useCallback(
+    (px: number, py: number, cam: Camera, cw: number, ch: number) => {
+      const list = buildingsRef.current;
+      // iterate front-to-back: higher depth (col+row) is drawn later / on top
+      const sorted = [...list].sort((a, b) => b.col + b.row - (a.col + a.row));
+      for (const b of sorted) {
+        const iso = gridToIso(b.col, b.row);
+        const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
+        const def = PROVIDERS[b.provider];
+        const img = isReady(def.buildingArt) ? loadImage(def.buildingArt) : null;
+        const w = TILE_W * 1.5 * cam.zoom;
+        const h = img ? w * (img.height / img.width) : w;
+        const top = s.y - h + TILE_H * 0.5 * cam.zoom;
+        const left = s.x - w / 2;
+        // generous box, trimmed a touch on the sides to feel right
+        if (px >= left + w * 0.12 && px <= left + w * 0.88 && py >= top + h * 0.05 && py <= s.y + TILE_H * 0.4 * cam.zoom) {
+          return b;
+        }
+      }
+      return undefined;
+    },
+    [],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
