@@ -70,7 +70,7 @@ export function DockTray({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(42vh - 56px)" }}>
+        <div className="overflow-y-auto px-5 py-4" style={{ maxHeight: "calc(34vh - 56px)" }}>
           {kind === "agents" && <AgentsTray agents={agents} onOpenAgent={onOpenAgent} />}
           {kind === "buildings" && (
             <BuildingsTray
