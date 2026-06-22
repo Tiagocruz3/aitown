@@ -104,9 +104,7 @@ export function BuildingPanel({
     setLoadingModels(true);
     if (!silent) setModelError(null);
     try {
-      const res = await listModels({
-        data: { provider: building.provider, apiKey: cfg.apiKey, apiBase: cfg.apiBase },
-      });
+      const res = await apiModels({ provider: building.provider, apiKey: cfg.apiKey, apiBase: cfg.apiBase });
       if (res.error) {
         setModelError(res.error);
       } else if (res.models?.length) {
