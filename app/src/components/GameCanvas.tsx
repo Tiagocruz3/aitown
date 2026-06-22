@@ -452,7 +452,10 @@ export function GameCanvas({
       const p = getPos(e);
       const cam = camRef.current;
       const cell = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
-      const b = buildingAt(cell.col, cell.row);
+      const inGrid = cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID;
+      const b =
+        buildingAtScreen(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight) ??
+        (inGrid ? buildingAt(cell.col, cell.row) : undefined);
       if (b) cbRef.current.onContextBuilding(b, e.clientX, e.clientY);
     }
 
