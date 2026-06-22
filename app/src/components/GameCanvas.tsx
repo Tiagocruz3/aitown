@@ -52,6 +52,7 @@ interface Props {
   agents: React.MutableRefObject<LiveAgent[]>;
   roads: React.MutableRefObject<Set<string>>;
   placing: ProviderId | null;
+  placingActive: boolean;
   roadTool: RoadTool | null;
   movingId: string | null;
   onPlace: (col: number, row: number) => void;
@@ -67,6 +68,7 @@ export function GameCanvas({
   agents,
   roads,
   placing,
+  placingActive,
   roadTool,
   movingId,
   onPlace,
