@@ -344,6 +344,7 @@ export function Game() {
           items={[
             { label: "Open settings", onClick: () => setOpenBuilding(ctx.b) },
             { label: "Chat with agent", onClick: () => setOpenAgent(ctx.b.provider) },
+            { label: "Move", onClick: () => startMoving(ctx.b) },
             {
               label: "Duplicate",
               onClick: () => {
@@ -357,7 +358,7 @@ export function Game() {
                 bump();
               },
             },
-            { label: "Delete", danger: true, onClick: () => deleteBuilding(ctx.b) },
+            { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
           ]}
         />
       )}
