@@ -1,36 +1,44 @@
 import { useEffect, useRef, useState } from "react";
-import { GameCanvas, type PlacedBuilding, type LiveAgent, type RoadTool } from "./GameCanvas";
-import { BuildingModal, AgentModal, ContextMenu } from "./Modals";
+import {
+  GameCanvas,
+  type PlacedBuilding,
+  type LiveAgent,
+  type RoadTool,
+} from "./GameCanvas";
+import { BuildingModal, AgentModal, ContextMenu, BrandImg } from "./Modals";
+import { DockModal, TownHallModal } from "./DockModals";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
   DOCK,
   GRID_HELP,
+  TOWN_HALL,
+  type DockKind,
   type ProviderId,
 } from "../game/data";
 
-const STORAGE_KEY = "agentvillage.save.v2";
+const STORAGE_KEY = "agentvillage.save.v3";
+
+// What the user is currently placing from the dock.
+type PlaceTarget = { kind: "provider"; provider: ProviderId } | { kind: "town-hall" } | null;
 
 export function Game() {
-  // Empty town to start: "no building, no agents".
   const [buildings, setBuildings] = useState<PlacedBuilding[]>([]);
-  const [placing, setPlacing] = useState<ProviderId | null>(null);
+  const [placing, setPlacing] = useState<PlaceTarget>(null);
   const [roadTool, setRoadTool] = useState<RoadTool | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [roadCount, setRoadCount] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null); // building selected on map (shows edit toolbar)
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
-  const [openAgent, setOpenAgent] = useState<ProviderId | null>(null);
-  const [dockTab, setDockTab] = useState<string | null>(null);
+  const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
+  const [openAgentId, setOpenAgentId] = useState<string | null>(null);
+  const [dockModal, setDockModal] = useState<DockKind | null>(null);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  // tick to force re-render of dock/HUD when agents ref changes
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
 
-  // Agents live in a ref so the rAF loop mutates them without React re-renders.
-  // RULE: exactly one agent per building; agent id === building id.
   const agents = useRef<LiveAgent[]>([]);
-  // Roads live in a ref (a Set of "col,row") for the same reason.
   const roads = useRef<Set<string>>(new Set());
 
   function persist(nextBuildings: PlacedBuilding[]) {
@@ -46,7 +54,6 @@ export function Game() {
 
   function paintRoad(col: number, row: number, erase: boolean) {
     const key = `${col},${row}`;
-    // never lay road under a building
     if (!erase && buildings.some((b) => b.col === col && b.row === row)) return;
     const before = roads.current.size;
     if (erase) roads.current.delete(key);
@@ -58,6 +65,7 @@ export function Game() {
   }
 
   function spawnAgent(b: PlacedBuilding) {
+    if (b.kind !== "provider") return; // town hall has no agent
     const def = PROVIDERS[b.provider];
     agents.current.push({
       id: b.id,
@@ -79,7 +87,7 @@ export function Game() {
     agents.current = agents.current.filter((a) => a.id !== buildingId);
   }
 
-  // load save (and reconcile agents to buildings — enforces "no building no agents")
+  // load save & reconcile agents to buildings (enforces "no building, no agents")
   useEffect(() => {
     let initial: PlacedBuilding[] = [];
     try {
@@ -87,9 +95,12 @@ export function Game() {
       if (raw) {
         const data = JSON.parse(raw);
         if (Array.isArray(data?.buildings)) {
-          initial = data.buildings.filter(
-            (b: PlacedBuilding) => b && PROVIDER_ORDER.includes(b.provider),
-          );
+          initial = data.buildings
+            .map((b: PlacedBuilding) => ({ ...b, kind: b.kind ?? "provider" }))
+            .filter(
+              (b: PlacedBuilding) =>
+                b && (b.kind === "town-hall" || PROVIDER_ORDER.includes(b.provider)),
+            );
         }
         if (Array.isArray(data?.roads)) {
           roads.current = new Set(
@@ -108,7 +119,6 @@ export function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // persist (buildings + roads)
   useEffect(() => {
     persist(buildings);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,13 +127,33 @@ export function Game() {
   function showToast(t: string) {
     setToast(t);
     window.clearTimeout((showToast as unknown as { _t?: number })._t);
-    (showToast as unknown as { _t?: number })._t = window.setTimeout(() => setToast(null), 2200);
+    (showToast as unknown as { _t?: number })._t = window.setTimeout(() => setToast(null), 2600);
   }
 
   function place(col: number, row: number) {
     if (!placing) return;
-    const def = PROVIDERS[placing];
-    const b: PlacedBuilding = { id: `b-${placing}-${Date.now()}`, provider: placing, col, row };
+    if (placing.kind === "town-hall") {
+      const b: PlacedBuilding = {
+        id: `town-hall-${Date.now()}`,
+        kind: "town-hall",
+        provider: "openai",
+        col,
+        row,
+      };
+      setBuildings((arr) => [...arr, b]);
+      bump();
+      showToast("Town Hall built · your OS control center is live");
+      setPlacing(null);
+      return;
+    }
+    const def = PROVIDERS[placing.provider];
+    const b: PlacedBuilding = {
+      id: `b-${placing.provider}-${Date.now()}`,
+      kind: "provider",
+      provider: placing.provider,
+      col,
+      row,
+    };
     setBuildings((arr) => [...arr, b]);
     spawnAgent(b);
     bump();
@@ -131,18 +161,23 @@ export function Game() {
     setPlacing(null);
   }
 
-  // building placement and road painting are mutually exclusive tools
-  function startPlacing(p: ProviderId) {
+  function startPlacingProvider(p: ProviderId) {
     setRoadTool(null);
     setMovingId(null);
-    setPlacing(p);
-    setDockTab(null);
+    setPlacing({ kind: "provider", provider: p });
+    setDockModal(null);
+  }
+  function startPlacingTownHall() {
+    setRoadTool(null);
+    setMovingId(null);
+    setPlacing({ kind: "town-hall" });
+    setDockModal(null);
   }
   function chooseRoadTool(t: RoadTool | null) {
     setPlacing(null);
     if (t) setMovingId(null);
     setRoadTool(t);
-    if (t) setDockTab(null); // get the drawer out of the way while painting
+    if (t) setDockModal(null);
   }
   function clearRoads() {
     roads.current = new Set();
@@ -155,14 +190,16 @@ export function Game() {
     setPlacing(null);
     setRoadTool(null);
     setOpenBuilding(null);
+    setOpenTownHall(null);
     setMovingId(b.id);
-    showToast(`Moving ${PROVIDERS[b.provider].name} · click a free tile`);
+    showToast(
+      `Moving ${b.kind === "town-hall" ? "Town Hall" : PROVIDERS[b.provider].name} · click a free tile`,
+    );
   }
 
   function moveTo(id: string, col: number, row: number) {
     setBuildings((arr) => {
       const next = arr.map((b) => (b.id === id ? { ...b, col, row } : b));
-      // relocate the owning agent's home so it follows its building
       const a = agents.current.find((x) => x.id === id);
       if (a) {
         a.homeCol = col;
@@ -182,12 +219,54 @@ export function Game() {
     setBuildings((arr) => arr.filter((x) => x.id !== b.id));
     despawnAgent(b.id);
     setMovingId((m) => (m === b.id ? null : m));
+    setSelectedId((s) => (s === b.id ? null : s));
     setOpenBuilding((ob) => (ob?.id === b.id ? null : ob));
+    setOpenTownHall((th) => (th?.id === b.id ? null : th));
     bump();
-    showToast(`${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`);
+    if (b.kind === "town-hall") showToast("Town Hall removed");
+    else
+      showToast(
+        `${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`,
+      );
+  }
+
+  function duplicateBuilding(b: PlacedBuilding) {
+    if (b.kind === "town-hall") {
+      showToast("Only one Town Hall allowed");
+      return;
+    }
+    const nb: PlacedBuilding = {
+      ...b,
+      id: `b-${b.provider}-${Date.now()}`,
+      col: Math.min(15, b.col + 1),
+    };
+    setBuildings((arr) => [...arr, nb]);
+    spawnAgent(nb);
+    bump();
+    showToast(`${PROVIDERS[b.provider].name} duplicated`);
+  }
+
+  // open a building (route town-hall to its own modal)
+  function openBuildingById(b: PlacedBuilding) {
+    setSelectedId(b.id);
+    if (b.kind === "town-hall") setOpenTownHall(b);
+    else setOpenBuilding(b);
+  }
+
+  function openAgentById(id: string) {
+    setOpenAgentId(id);
+  }
+  function openAgentByProvider(p: ProviderId) {
+    const a = agents.current.find((x) => x.provider === p);
+    if (a) setOpenAgentId(a.id);
   }
 
   const liveAgents = agents.current;
+  const hasTownHall = buildings.some((b) => b.kind === "town-hall");
+  const selected = buildings.find((b) => b.id === selectedId) ?? null;
+  const openAgentProvider = openAgentId
+    ? (agents.current.find((a) => a.id === openAgentId)?.provider ?? null)
+    : null;
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#8fd3ff] select-none">
@@ -195,17 +274,15 @@ export function Game() {
         buildings={buildings}
         agents={agents}
         roads={roads}
-        placing={placing}
+        placing={placing?.kind === "provider" ? placing.provider : placing?.kind === "town-hall" ? "openai" : null}
+        placingActive={!!placing}
         roadTool={roadTool}
         movingId={movingId}
         onPlace={place}
         onPaintRoad={paintRoad}
         onMoveTo={moveTo}
-        onPickBuilding={(b) => setOpenBuilding(b)}
-        onPickAgent={(id) => {
-          const a = agents.current.find((x) => x.id === id);
-          if (a) setOpenAgent(a.provider);
-        }}
+        onPickBuilding={openBuildingById}
+        onPickAgent={openAgentById}
         onContextBuilding={(b, x, y) => setCtx({ b, x, y })}
       />
 
@@ -227,14 +304,14 @@ export function Game() {
       {/* empty-state hint */}
       {buildings.length === 0 && !placing && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-          <div className="pointer-events-auto rounded-2xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
+          <div className="pointer-events-auto rounded-3xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
             <div className="text-3xl">🏗️</div>
             <p className="mt-2 font-semibold text-white">Your town is empty</p>
             <p className="mt-1 max-w-xs text-sm text-white/60">
-              Open the <b>Buildings</b> dock and place a provider building. Each one you place spawns its branded AI agent.
+              Open <b>Buildings</b> and place the Town Hall, then add provider buildings — each one hires its branded AI agent.
             </p>
             <button
-              onClick={() => setDockTab("buildings")}
+              onClick={() => setDockModal("buildings")}
               className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
             >
               Open Buildings
@@ -245,30 +322,31 @@ export function Game() {
 
       {/* placing banner */}
       {placing && (
-        <div className="absolute left-1/2 top-20 -translate-x-1/2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white shadow-lg" style={{ background: PROVIDERS[placing].color }}>
-          Click a free tile to place {PROVIDERS[placing].name} ·{" "}
+        <Banner
+          color={placing.kind === "town-hall" ? TOWN_HALL.color : PROVIDERS[placing.provider].color}
+        >
+          Click a free tile to place{" "}
+          {placing.kind === "town-hall" ? "Town Hall" : PROVIDERS[placing.provider].name} ·{" "}
           <button className="underline" onClick={() => setPlacing(null)}>
             cancel
           </button>
-        </div>
+        </Banner>
       )}
 
       {/* move mode banner */}
       {movingId && (
-        <div className="absolute left-1/2 top-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-indigo-600/90 px-5 py-2 text-sm font-semibold text-white shadow-lg">
-          <span>✋ Click a free tile to drop the building</span>
+        <Banner color="#4f46e5">
+          ✋ Click a free tile to drop the building ·{" "}
           <button className="underline" onClick={() => setMovingId(null)}>
             cancel
           </button>
-        </div>
+        </Banner>
       )}
 
       {/* road tool banner */}
       {roadTool && (
-        <div className="absolute left-1/2 top-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-[#5d5f68] px-5 py-2 text-sm font-semibold text-white shadow-lg">
-          <span>
-            {roadTool === "road" ? "🛣️ Click or drag to paint roads" : "🧽 Click or drag to erase roads"}
-          </span>
+        <div className="absolute left-1/2 top-20 z-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-[#5d5f68] px-5 py-2 text-sm font-semibold text-white shadow-lg">
+          <span>{roadTool === "road" ? "🛣️ Click or drag to paint roads" : "🧽 Click or drag to erase roads"}</span>
           <button
             className={`rounded-full px-2 py-0.5 text-xs ${roadTool === "road" ? "bg-white text-black" : "bg-white/20"}`}
             onClick={() => chooseRoadTool("road")}
@@ -287,51 +365,86 @@ export function Game() {
         </div>
       )}
 
-      {/* dock drawer */}
-      {dockTab && (
-        <DockDrawer
-          tab={dockTab}
+      {/* selected-building info card (top-left, Town Star style) */}
+      {selected && !movingId && (
+        <BuildingInfoCard
+          building={selected}
+          onOpen={() => openBuildingById(selected)}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+
+      {/* Town Star-style edit toolbar for the selected building (Open / Move / Remove) */}
+      {selected && !movingId && (
+        <EditToolbar
+          building={selected}
+          onOpen={() => openBuildingById(selected)}
+          onMove={() => startMoving(selected)}
+          onDuplicate={() => duplicateBuilding(selected)}
+          onRemove={() => {
+            const name = selected.kind === "town-hall" ? "Town Hall" : PROVIDERS[selected.provider].name;
+            if (confirm(`Remove ${name}?`)) deleteBuilding(selected);
+          }}
+        />
+      )}
+
+      {/* ===== Town Star-style floating bottom dock ===== */}
+      {!selected && (
+        <div className="absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3">
+          <div className="flex max-w-[96vw] items-end gap-2 overflow-x-auto rounded-[26px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
+            {DOCK.map((d) => {
+              const active =
+                dockModal === d.id || (d.id === "buildings" && (!!roadTool || placing?.kind === "town-hall"));
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => setDockModal(dockModal === d.id ? null : d.id)}
+                  className="group flex shrink-0 flex-col items-center gap-1"
+                >
+                  <div
+                    className={`grid h-[68px] w-[68px] place-items-center rounded-[20px] border transition ${
+                      active
+                        ? "border-white/40 bg-[#FBFBEF] shadow-lg"
+                        : "border-black/5 bg-[#F0F4E1]/90 shadow-md group-hover:-translate-y-1 group-hover:bg-[#F6F8E8]"
+                    }`}
+                  >
+                    <DockIcon icon={d.icon} emoji={d.emoji} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-white drop-shadow">{d.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* hint */}
+      <div className="pointer-events-none absolute bottom-28 left-4 hidden max-w-xs rounded-lg bg-black/30 px-3 py-1.5 text-[11px] text-white/70 backdrop-blur sm:block">
+        {GRID_HELP}
+      </div>
+
+      {/* ===== Centered dock modals ===== */}
+      {dockModal && (
+        <DockModal
+          kind={dockModal}
           buildings={buildings}
+          agents={liveAgents}
           roadCount={roadCount}
           roadTool={roadTool}
-          onClose={() => setDockTab(null)}
-          onPlace={startPlacing}
-          onOpenAgent={(p) => {
-            setOpenAgent(p);
-            setDockTab(null);
+          hasTownHall={hasTownHall}
+          onClose={() => setDockModal(null)}
+          onPlaceProvider={startPlacingProvider}
+          onPlaceTownHall={startPlacingTownHall}
+          onOpenAgent={(id) => {
+            setDockModal(null);
+            openAgentById(id);
           }}
           onRoadTool={chooseRoadTool}
           onClearRoads={clearRoads}
         />
       )}
 
-      {/* bottom dock */}
-      <div className="absolute inset-x-0 bottom-0 flex justify-center p-3">
-        <div className="flex gap-1 rounded-2xl border border-white/15 bg-black/40 p-1.5 backdrop-blur-md">
-          {DOCK.map((d) => {
-            const active = dockTab === d.id || (d.id === "roads" && !!roadTool);
-            return (
-              <button
-                key={d.id}
-                onClick={() => setDockTab(dockTab === d.id ? null : d.id)}
-                className={`flex w-[72px] flex-col items-center gap-1 rounded-xl px-2 py-2 transition ${
-                  active ? "bg-white/20" : "hover:bg-white/10"
-                }`}
-              >
-                <DockIcon id={d.id} fallback={d.icon} />
-                <span className="text-[10px] font-medium text-white/80">{d.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* hint */}
-      <div className="pointer-events-none absolute bottom-24 left-4 hidden max-w-xs rounded-lg bg-black/30 px-3 py-1.5 text-[11px] text-white/70 backdrop-blur sm:block">
-        {GRID_HELP}
-      </div>
-
-      {/* modals */}
+      {/* ===== Building / agent / town-hall modals ===== */}
       {openBuilding && (
         <BuildingModal
           building={openBuilding}
@@ -340,44 +453,67 @@ export function Game() {
           onMove={() => startMoving(openBuilding)}
           onDelete={() => deleteBuilding(openBuilding)}
           onChat={() => {
-            setOpenAgent(openBuilding.provider);
+            openAgentByProvider(openBuilding.provider);
             setOpenBuilding(null);
           }}
         />
       )}
-      {openAgent && <AgentModal provider={openAgent} onClose={() => setOpenAgent(null)} />}
+      {openTownHall && (
+        <TownHallModal
+          buildings={buildings}
+          agents={liveAgents}
+          onClose={() => setOpenTownHall(null)}
+          onOpenAgent={(id) => {
+            setOpenTownHall(null);
+            openAgentById(id);
+          }}
+          onMove={() => startMoving(openTownHall)}
+          onDelete={() => deleteBuilding(openTownHall)}
+        />
+      )}
+      {openAgentProvider && (
+        <AgentModal provider={openAgentProvider} onClose={() => setOpenAgentId(null)} />
+      )}
+
       {ctx && (
         <ContextMenu
           x={ctx.x}
           y={ctx.y}
           onClose={() => setCtx(null)}
-          items={[
-            { label: "Open settings", onClick: () => setOpenBuilding(ctx.b) },
-            { label: "Chat with agent", onClick: () => setOpenAgent(ctx.b.provider) },
-            { label: "Move", onClick: () => startMoving(ctx.b) },
-            {
-              label: "Duplicate",
-              onClick: () => {
-                const nb: PlacedBuilding = {
-                  ...ctx.b,
-                  id: `b-${ctx.b.provider}-${Date.now()}`,
-                  col: Math.min(15, ctx.b.col + 1),
-                };
-                setBuildings((arr) => [...arr, nb]);
-                spawnAgent(nb);
-                bump();
-              },
-            },
-            { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
-          ]}
+          items={
+            ctx.b.kind === "town-hall"
+              ? [
+                  { label: "Open", onClick: () => openBuildingById(ctx.b) },
+                  { label: "Move", onClick: () => startMoving(ctx.b) },
+                  { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
+                ]
+              : [
+                  { label: "Open settings", onClick: () => openBuildingById(ctx.b) },
+                  { label: "Chat with agent", onClick: () => openAgentByProvider(ctx.b.provider) },
+                  { label: "Move", onClick: () => startMoving(ctx.b) },
+                  { label: "Duplicate", onClick: () => duplicateBuilding(ctx.b) },
+                  { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
+                ]
+          }
         />
       )}
 
       {toast && (
-        <div className="absolute left-1/2 top-32 -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-sm text-white shadow-lg">
+        <div className="absolute left-1/2 top-32 z-30 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-sm text-white shadow-lg">
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+function Banner({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="absolute left-1/2 top-20 z-20 -translate-x-1/2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white shadow-lg"
+      style={{ background: color }}
+    >
+      {children}
     </div>
   );
 }
@@ -391,186 +527,126 @@ function Pill({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-// Dock icons: use real provider art where it makes sense, emoji otherwise.
-function DockIcon({ id, fallback }: { id: string; fallback: string }) {
-  if (id === "buildings") {
+function DockIcon({ icon, emoji }: { icon: string; emoji: string }) {
+  const [ok, setOk] = useState(true);
+  if (icon && ok) {
     return (
-      <div className="flex h-7 w-7 items-center justify-center">
-        <img src={PROVIDERS.openai.buildingArt} alt="" className="h-7 w-7 object-contain" />
-      </div>
+      <img
+        src={icon}
+        alt=""
+        className="h-[52px] w-[52px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]"
+        onError={() => setOk(false)}
+      />
     );
   }
-  if (id === "chat-agents") {
-    return (
-      <div className="flex h-7 w-7 items-center justify-center">
-        <img src={PROVIDERS.anthropic.agentArt} alt="" className="h-7 w-7 object-contain" />
-      </div>
-    );
-  }
-  return <span className="flex h-7 items-center text-xl">{fallback}</span>;
+  return <span className="text-3xl">{emoji}</span>;
 }
 
-function DockDrawer({
-  tab,
-  buildings,
-  roadCount,
-  roadTool,
+/* Town Star-style top-left building info card */
+function BuildingInfoCard({
+  building,
+  onOpen,
   onClose,
-  onPlace,
-  onOpenAgent,
-  onRoadTool,
-  onClearRoads,
 }: {
-  tab: string;
-  buildings: PlacedBuilding[];
-  roadCount: number;
-  roadTool: RoadTool | null;
+  building: PlacedBuilding;
+  onOpen: () => void;
   onClose: () => void;
-  onPlace: (p: ProviderId) => void;
-  onOpenAgent: (p: ProviderId) => void;
-  onRoadTool: (t: RoadTool | null) => void;
-  onClearRoads: () => void;
 }) {
-  // which providers currently have a building (=> have a live agent)
-  const placedProviders = Array.from(new Set(buildings.map((b) => b.provider)));
-
+  const isHall = building.kind === "town-hall";
+  const name = isHall ? "Town Hall" : PROVIDERS[building.provider].name;
+  const sub = isHall ? "OS control center" : PROVIDERS[building.provider].company;
+  const art = isHall ? TOWN_HALL.art : PROVIDERS[building.provider].buildingArt;
+  const agent = isHall ? null : PROVIDERS[building.provider].agent.name;
+  const color = isHall ? TOWN_HALL.color : PROVIDERS[building.provider].color;
   return (
-    <div className="absolute inset-x-0 bottom-[92px] flex justify-center px-3">
-      <div className="w-[min(760px,94vw)] rounded-2xl border border-white/15 bg-[#11131c]/95 p-4 shadow-2xl backdrop-blur-md">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-bold text-white">{DOCK_TITLE[tab] ?? tab}</h3>
-          <button onClick={onClose} className="text-white/50 hover:text-white">
-            ✕
-          </button>
+    <div className="absolute left-4 top-20 z-20 w-[260px] rounded-2xl bg-[#F0F4E1]/95 p-3 shadow-xl backdrop-blur">
+      <div className="flex items-start gap-3">
+        <BrandImg src={art} alt={name} className="h-14 w-14 object-contain" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-lg font-extrabold leading-tight text-[#2a2f1e]">{name}</div>
+          <div className="truncate text-xs font-medium text-[#5b6047]">{sub}</div>
         </div>
+        <button onClick={onClose} className="text-[#5b6047] hover:text-[#2a2f1e]">
+          ✕
+        </button>
+      </div>
+      <div className="mt-2 space-y-1.5">
+        <StatBar icon="🤖" value={isHall ? "Control center" : `${agent} on duty`} color={color} />
+        <StatBar icon="📍" value={`Tile ${building.col}, ${building.row}`} />
+      </div>
+      <button
+        onClick={onOpen}
+        className="mt-2.5 w-full rounded-xl py-2 text-sm font-bold text-white shadow"
+        style={{ background: color }}
+      >
+        {isHall ? "Open Town Hall" : "Open settings"}
+      </button>
+    </div>
+  );
+}
 
-        {tab === "buildings" && (
-          <>
-            <p className="mb-3 text-xs text-white/45">
-              Place a provider building on the map. Each spawns exactly one branded agent — one agent per building.
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {PROVIDER_ORDER.map((id) => {
-                const p = PROVIDERS[id];
-                return (
-                  <button
-                    key={id}
-                    onClick={() => onPlace(id)}
-                    className="group rounded-xl border border-white/10 bg-white/5 p-3 text-center transition hover:border-white/30 hover:bg-white/10"
-                    style={{ boxShadow: `inset 0 -2px 0 ${p.color}` }}
-                  >
-                    <img src={p.buildingArt} alt={p.name} className="mx-auto h-20 w-20 object-contain transition group-hover:scale-110" />
-                    <div className="mt-1 truncate text-sm font-semibold text-white">{p.name}</div>
-                    <div className="truncate text-[10px] text-white/45">{p.company}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {tab === "chat-agents" && (
-          <>
-            <p className="mb-3 text-xs text-white/45">
-              These are the agents living in your town. Place a provider building to add its agent here.
-            </p>
-            {placedProviders.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <div className="text-3xl">💬</div>
-                <p className="text-sm font-medium text-white/70">No agents yet</p>
-                <p className="max-w-sm text-xs text-white/45">Place a provider building to spawn its branded chat agent.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {placedProviders.map((id) => {
-                  const p = PROVIDERS[id];
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => onOpenAgent(id)}
-                      className="rounded-xl border border-white/10 bg-white/5 p-3 text-center transition hover:border-white/30 hover:bg-white/10"
-                      style={{ boxShadow: `inset 0 -2px 0 ${p.color}` }}
-                    >
-                      <img src={p.agentArt} alt={p.agent.name} className="mx-auto h-20 w-20 object-contain" />
-                      <div className="mt-1 text-sm font-semibold text-white">{p.agent.name}</div>
-                      <div className="truncate text-[10px] text-white/45">{p.agent.title}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === "roads" && (
-          <>
-            <p className="mb-3 text-xs text-white/45">
-              Paint roads tile-by-tile, or click and drag to draw a path. Roads can't be placed under buildings. Your agents stroll the town along them.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => onRoadTool("road")}
-                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                  roadTool === "road"
-                    ? "border-white/40 bg-white/15 text-white"
-                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-                }`}
-              >
-                <span className="text-lg">🛣️</span> Paint road
-              </button>
-              <button
-                onClick={() => onRoadTool("erase-road")}
-                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                  roadTool === "erase-road"
-                    ? "border-white/40 bg-white/15 text-white"
-                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-                }`}
-              >
-                <span className="text-lg">🧽</span> Erase road
-              </button>
-              <button
-                onClick={() => onRoadTool(null)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
-              >
-                Stop
-              </button>
-              <div className="ml-auto flex items-center gap-3">
-                <span className="text-xs text-white/45">{roadCount} tiles</span>
-                <button
-                  onClick={onClearRoads}
-                  disabled={roadCount === 0}
-                  className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-40"
-                >
-                  Clear all
-                </button>
-              </div>
-            </div>
-            <p className="mt-3 text-[11px] text-white/35">
-              Tip: pick a tool here, then the drawer closes out of the way — paint directly on the map. Re-open Roads to switch or stop.
-            </p>
-          </>
-        )}
-
-        {tab !== "buildings" && tab !== "chat-agents" && tab !== "roads" && (
-          <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <div className="text-3xl">✨</div>
-            <p className="text-sm font-medium capitalize text-white/75">{DOCK_TITLE[tab] ?? tab}</p>
-            <p className="max-w-sm text-xs text-white/45">
-              Part of the AgentVillage OS roadmap. The dock slot and data model are ready to wire up.
-            </p>
-          </div>
-        )}
+function StatBar({ icon, value, color }: { icon: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-base">{icon}</span>
+      <div
+        className="flex-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2a2f1e] shadow-inner"
+        style={color ? { boxShadow: `inset 0 0 0 1.5px ${color}55` } : undefined}
+      >
+        {value}
       </div>
     </div>
   );
 }
 
-const DOCK_TITLE: Record<string, string> = {
-  "chat-agents": "Chat Agents",
-  buildings: "Provider Buildings",
-  roads: "Roads",
-  workforce: "Workforce",
-  integrations: "Integrations",
-  marketplace: "Marketplace",
-  world: "World",
-};
+/* Town Star-style edit toolbar (bottom center): Open / Move / Duplicate / Remove */
+function EditToolbar({
+  building,
+  onOpen,
+  onMove,
+  onDuplicate,
+  onRemove,
+}: {
+  building: PlacedBuilding;
+  onOpen: () => void;
+  onMove: () => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+}) {
+  const isHall = building.kind === "town-hall";
+  return (
+    <div className="absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3">
+      <div className="flex items-end gap-2 rounded-[24px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
+        <ToolCard emoji="⚙️" label="Open" onClick={onOpen} />
+        <ToolCard emoji="✋" label="Move" onClick={onMove} />
+        {!isHall && <ToolCard emoji="➕" label="Duplicate" onClick={onDuplicate} />}
+        <ToolCard emoji="💣" label="Remove" danger onClick={onRemove} />
+      </div>
+    </div>
+  );
+}
+
+function ToolCard({
+  emoji,
+  label,
+  danger,
+  onClick,
+}: {
+  emoji: string;
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="group flex flex-col items-center gap-1">
+      <div
+        className={`grid h-[64px] w-[64px] place-items-center rounded-[20px] border shadow-md transition group-hover:-translate-y-1 ${
+          danger ? "border-red-300/60 bg-[#FBE9E1]/95" : "border-black/5 bg-[#F0F4E1]/95"
+        }`}
+      >
+        <span className="text-3xl">{emoji}</span>
+      </div>
+      <span className="text-[11px] font-semibold text-white drop-shadow">{label}</span>
+    </button>
+  );
+}
