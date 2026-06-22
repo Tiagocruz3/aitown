@@ -392,13 +392,24 @@ export function GameCanvas({
       const p = getPos(e);
       const cam = camRef.current;
       const cell = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
+      const inGrid = cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID;
 
+      // MOVE mode: relocate the building being moved to the clicked tile
+      if (movingRef.current) {
+        if (
+          inGrid &&
+          !buildingAt(cell.col, cell.row) &&
+          !roads.current.has(`${cell.col},${cell.row}`)
+        ) {
+          cbRef.current.onMoveTo(movingRef.current, cell.col, cell.row);
+        }
+        return;
+      }
+
+      // PLACE mode: drop a new building
       if (placingRef.current) {
         if (
-          cell.col >= 0 &&
-          cell.row >= 0 &&
-          cell.col < GRID &&
-          cell.row < GRID &&
+          inGrid &&
           !buildingAt(cell.col, cell.row) &&
           !roads.current.has(`${cell.col},${cell.row}`)
         ) {
@@ -424,7 +435,10 @@ export function GameCanvas({
         return;
       }
 
-      const b = buildingAt(cell.col, cell.row);
+      // building click — test the rendered sprite, not just the base tile
+      const b =
+        buildingAtScreen(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight) ??
+        (inGrid ? buildingAt(cell.col, cell.row) : undefined);
       if (b) cbRef.current.onPickBuilding(b);
     }
     function onWheel(e: WheelEvent) {
