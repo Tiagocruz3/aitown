@@ -191,12 +191,20 @@ export interface DockCategory {
 }
 
 export const GRID_HELP =
-  "Drag to pan · Scroll to zoom · Place a provider building to spawn its agent · Click an agent to chat · Click a building for settings · Right-click a building for options";
+  "Drag to pan · Scroll to zoom · Place a provider building to spawn its agent · Open Roads to paint paths · Click an agent to chat · Click a building for settings · Right-click a building for options";
 
-// First category is Chat Agents, then the 4 provider Buildings, then panels.
+// Road tile colors (flat, drawn under buildings & agents).
+export const ROAD = {
+  fill: "#7d7f88",
+  edge: "#5d5f68",
+  dash: "#d9c66a",
+} as const;
+
+// First category is Chat Agents, then the 4 provider Buildings, Roads, then panels.
 export const DOCK: DockCategory[] = [
   { id: "chat-agents", icon: "💬", label: "Chat Agents", kind: "chat-agents" },
   { id: "buildings", icon: "🏢", label: "Buildings", kind: "buildings" },
+  { id: "roads", icon: "🛣️", label: "Roads", kind: "panel" },
   { id: "workforce", icon: "👥", label: "Workforce", kind: "panel" },
   { id: "integrations", icon: "🔌", label: "Integrations", kind: "panel" },
   { id: "marketplace", icon: "🛒", label: "Marketplace", kind: "panel" },
