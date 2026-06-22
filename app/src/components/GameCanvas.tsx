@@ -352,7 +352,9 @@ export function GameCanvas({
     }
     function onUp(e: MouseEvent) {
       const wasDrag = dragRef.current.moved;
+      const wasRoad = !!roadToolRef.current;
       dragRef.current.on = false;
+      if (wasRoad) return; // road painting handled on down/move
       if (wasDrag) return;
       const p = getPos(e);
       const cam = camRef.current;
@@ -364,7 +366,8 @@ export function GameCanvas({
           cell.row >= 0 &&
           cell.col < GRID &&
           cell.row < GRID &&
-          !buildingAt(cell.col, cell.row)
+          !buildingAt(cell.col, cell.row) &&
+          !roads.current.has(`${cell.col},${cell.row}`)
         ) {
           cbRef.current.onPlace(cell.col, cell.row);
         }
