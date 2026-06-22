@@ -34,11 +34,16 @@ export interface LiveAgent {
   wait: number;
 }
 
+export type RoadTool = "road" | "erase-road";
+
 interface Props {
   buildings: PlacedBuilding[];
   agents: React.MutableRefObject<LiveAgent[]>;
+  roads: React.MutableRefObject<Set<string>>;
   placing: ProviderId | null;
+  roadTool: RoadTool | null;
   onPlace: (col: number, row: number) => void;
+  onPaintRoad: (col: number, row: number, erase: boolean) => void;
   onPickBuilding: (b: PlacedBuilding) => void;
   onPickAgent: (id: string) => void;
   onContextBuilding: (b: PlacedBuilding, sx: number, sy: number) => void;
@@ -47,8 +52,11 @@ interface Props {
 export function GameCanvas({
   buildings,
   agents,
+  roads,
   placing,
+  roadTool,
   onPlace,
+  onPaintRoad,
   onPickBuilding,
   onPickAgent,
   onContextBuilding,
