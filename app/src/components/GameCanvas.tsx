@@ -42,8 +42,10 @@ interface Props {
   roads: React.MutableRefObject<Set<string>>;
   placing: ProviderId | null;
   roadTool: RoadTool | null;
+  movingId: string | null;
   onPlace: (col: number, row: number) => void;
   onPaintRoad: (col: number, row: number, erase: boolean) => void;
+  onMoveTo: (id: string, col: number, row: number) => void;
   onPickBuilding: (b: PlacedBuilding) => void;
   onPickAgent: (id: string) => void;
   onContextBuilding: (b: PlacedBuilding, sx: number, sy: number) => void;
@@ -55,8 +57,10 @@ export function GameCanvas({
   roads,
   placing,
   roadTool,
+  movingId,
   onPlace,
   onPaintRoad,
+  onMoveTo,
   onPickBuilding,
   onPickAgent,
   onContextBuilding,
