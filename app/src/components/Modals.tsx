@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PROVIDERS, type ProviderId } from "../game/data";
 import { getConfig, setConfig, hasKey, type ProviderConfig } from "../game/config";
+import { chat } from "../lib/api/chat.functions";
 import type { PlacedBuilding } from "./GameCanvas";
 
 /* ------------------------------------------------------------------ */
