@@ -421,7 +421,7 @@ export function Game() {
               return (
                 <button
                   key={d.id}
-                  onClick={() => setDockModal(dockModal === d.id ? null : d.id)}
+                  onClick={() => toggleTray(d.id)}
                   className="group flex shrink-0 flex-col items-center gap-1"
                 >
                   <div
