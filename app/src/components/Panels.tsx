@@ -599,7 +599,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-white">{def.agent.name}</h2>
+            <h2 className="font-bold text-white">{agentName}</h2>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: live ? "#22c55e22" : "#9ca3af22", color: live ? "#86efac" : "#cbd5e1" }}>● {live ? "live" : "demo"}</span>
           </div>
           <div className="truncate text-xs text-white/50">{def.agent.title} · {cfg.model}</div>
