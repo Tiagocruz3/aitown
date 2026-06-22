@@ -10,7 +10,7 @@ import {
   isReady,
   type Camera,
 } from "../game/iso";
-import { PROVIDERS, type ProviderId } from "../game/data";
+import { PROVIDERS, ROAD, type ProviderId } from "../game/data";
 
 export interface PlacedBuilding {
   id: string;
