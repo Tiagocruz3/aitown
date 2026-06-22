@@ -140,15 +140,13 @@ export function BuildingPanel({
     setTestState("testing");
     setTestMsg(null);
     try {
-      const res = await chat({
-        data: {
-          provider: building.provider,
-          apiKey: cfg.apiKey,
-          apiBase: cfg.apiBase,
-          model: cfg.model,
-          system: "You are a connection tester. Reply with the single word OK.",
-          messages: [{ role: "user", content: "ping" }],
-        },
+      const res = await apiChat({
+        provider: building.provider,
+        apiKey: cfg.apiKey,
+        apiBase: cfg.apiBase,
+        model: cfg.model,
+        system: "You are a connection tester. Reply with the single word OK.",
+        messages: [{ role: "user", content: "ping" }],
       });
       if (res.error) {
         setTestState("fail");
