@@ -150,6 +150,7 @@ export function GameCanvas({
       loadImage(p.buildingArt);
       loadImage(p.agentArt);
     });
+    loadImage(TOWN_HALL.art);
     agents.current.forEach((a) => loadImage(a.art));
 
     function drawTile(
