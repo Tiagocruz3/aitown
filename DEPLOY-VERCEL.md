@@ -26,10 +26,19 @@ are inert for the Cloudflare/Vite build.
 
 ## ⚠️ If you get `404: NOT_FOUND`
 
-That almost always means **Root Directory isn't set to `app`**, so Vercel built
-the (empty) repo root. Fix it in **Project → Settings → Build & Deployment →
-Root Directory → `app`**, then redeploy (Deployments → ⋯ → Redeploy). Everything
-in this app lives under `app/`, so this setting is required.
+That means Vercel built the wrong directory. The repo now ships **two** configs
+so it works either way:
+
+- **repo-root `vercel.json`** — builds the `app/` subdir and emits the Build
+  Output at the root. This makes a plain dashboard import (Root Directory left at
+  the repo root) work with no extra settings. **Just redeploy** after pulling
+  this change: Deployments → ⋯ → **Redeploy** (untick "use existing build cache").
+- **`app/vercel.json`** — used when you set **Root Directory = `app`**
+  (Project → Settings → Build & Deployment → Root Directory). Also fully
+  supported; pick whichever you prefer, not both at once.
+
+If it still 404s after redeploying, open the deployment's **Build Logs** and
+check the last lines — they'll show whether `.vercel/output` was produced.
 
 ## How it's wired (`app/vercel.json` + Build Output API)
 
