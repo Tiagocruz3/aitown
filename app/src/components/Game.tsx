@@ -253,6 +253,16 @@ export function Game() {
         </div>
       )}
 
+      {/* move mode banner */}
+      {movingId && (
+        <div className="absolute left-1/2 top-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-indigo-600/90 px-5 py-2 text-sm font-semibold text-white shadow-lg">
+          <span>✋ Click a free tile to drop the building</span>
+          <button className="underline" onClick={() => setMovingId(null)}>
+            cancel
+          </button>
+        </div>
+      )}
+
       {/* road tool banner */}
       {roadTool && (
         <div className="absolute left-1/2 top-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-[#5d5f68] px-5 py-2 text-sm font-semibold text-white shadow-lg">
