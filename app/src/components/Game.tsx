@@ -333,7 +333,17 @@ export function Game() {
 
       {/* modals */}
       {openBuilding && (
-        <BuildingModal building={openBuilding} onClose={() => setOpenBuilding(null)} onToast={showToast} />
+        <BuildingModal
+          building={openBuilding}
+          onClose={() => setOpenBuilding(null)}
+          onToast={showToast}
+          onMove={() => startMoving(openBuilding)}
+          onDelete={() => deleteBuilding(openBuilding)}
+          onChat={() => {
+            setOpenAgent(openBuilding.provider);
+            setOpenBuilding(null);
+          }}
+        />
       )}
       {openAgent && <AgentModal provider={openAgent} onClose={() => setOpenAgent(null)} />}
       {ctx && (
