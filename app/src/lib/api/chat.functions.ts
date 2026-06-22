@@ -76,7 +76,7 @@ export const listModels = createServerFn({ method: "POST" })
 
       const res = await fetch(`${base}/models`, { method: "GET", headers });
       const json = (await res.json()) as {
-        data?: { id?: string; name?: string }[];
+        data?: { id?: string; name?: string; display_name?: string }[];
         error?: { message?: string };
       };
       if (!res.ok) {
@@ -84,7 +84,7 @@ export const listModels = createServerFn({ method: "POST" })
       }
       const raw = json.data ?? [];
       let models = raw
-        .map((m) => ({ id: m.id ?? "", label: m.name ?? prettyLabel(m.id ?? "") }))
+        .map((m) => ({ id: m.id ?? "", label: m.display_name ?? m.name ?? prettyLabel(m.id ?? "") }))
         .filter((m) => m.id);
 
       // Keep the lists relevant: OpenAI/Grok → chat models only; sort newest-ish first.
