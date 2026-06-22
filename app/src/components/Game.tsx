@@ -580,7 +580,7 @@ function BuildingInfoCard({
   const name = isHall ? "Town Hall" : PROVIDERS[building.provider].name;
   const sub = isHall ? "OS control center" : PROVIDERS[building.provider].company;
   const art = isHall ? TOWN_HALL.art : PROVIDERS[building.provider].buildingArt;
-  const agent = isHall ? null : PROVIDERS[building.provider].agent.name;
+  const agent = isHall ? null : agentNameOf(building.provider);
   const color = isHall ? TOWN_HALL.color : PROVIDERS[building.provider].color;
   return (
     <div className="absolute left-4 top-20 z-20 w-[260px] rounded-2xl bg-[#F0F4E1]/95 p-3 shadow-xl backdrop-blur">
