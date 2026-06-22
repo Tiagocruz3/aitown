@@ -134,11 +134,13 @@ export function Game() {
   // building placement and road painting are mutually exclusive tools
   function startPlacing(p: ProviderId) {
     setRoadTool(null);
+    setMovingId(null);
     setPlacing(p);
     setDockTab(null);
   }
   function chooseRoadTool(t: RoadTool | null) {
     setPlacing(null);
+    if (t) setMovingId(null);
     setRoadTool(t);
     if (t) setDockTab(null); // get the drawer out of the way while painting
   }
@@ -149,9 +151,38 @@ export function Game() {
     showToast("All roads cleared");
   }
 
+  function startMoving(b: PlacedBuilding) {
+    setPlacing(null);
+    setRoadTool(null);
+    setOpenBuilding(null);
+    setMovingId(b.id);
+    showToast(`Moving ${PROVIDERS[b.provider].name} · click a free tile`);
+  }
+
+  function moveTo(id: string, col: number, row: number) {
+    setBuildings((arr) => {
+      const next = arr.map((b) => (b.id === id ? { ...b, col, row } : b));
+      // relocate the owning agent's home so it follows its building
+      const a = agents.current.find((x) => x.id === id);
+      if (a) {
+        a.homeCol = col;
+        a.homeRow = row;
+        a.target = { col, row };
+        a.state = "walk";
+      }
+      persist(next);
+      return next;
+    });
+    setMovingId(null);
+    bump();
+    showToast("Building moved");
+  }
+
   function deleteBuilding(b: PlacedBuilding) {
     setBuildings((arr) => arr.filter((x) => x.id !== b.id));
     despawnAgent(b.id);
+    setMovingId((m) => (m === b.id ? null : m));
+    setOpenBuilding((ob) => (ob?.id === b.id ? null : ob));
     bump();
     showToast(`${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`);
   }
