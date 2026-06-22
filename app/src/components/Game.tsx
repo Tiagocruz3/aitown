@@ -411,9 +411,9 @@ export function Game() {
         />
       )}
 
-      {/* ===== Town Star-style floating bottom dock ===== */}
+      {/* ===== Town Star-style floating bottom dock (always the launcher) ===== */}
       {!selected && (
-        <div className="absolute inset-x-0 bottom-0 flex justify-center px-3 pb-3">
+        <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-3">
           <div className="flex max-w-[96vw] items-end gap-2 overflow-x-auto rounded-[26px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
             {DOCK.map((d) => {
               const active =
