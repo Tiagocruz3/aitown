@@ -50,7 +50,7 @@ export const listModels = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = (data.apiKey || envKey(data.provider)).trim();
     if (!key) return { models: [] as { id: string; label: string }[], error: "No API key — enter one to load models." };
-    const base = data.apiBase.replace(/\/$/, "");
+    const base = (data.apiBase || "").replace(/\/$/, "");
     if (!base) return { models: [] as { id: string; label: string }[], error: "Missing endpoint." };
     try {
       const headers: Record<string, string> = { "content-type": "application/json" };
