@@ -274,7 +274,6 @@ export function Game() {
         buildings={buildings}
         agents={agents}
         roads={roads}
-        placing={placing?.kind === "provider" ? placing.provider : placing?.kind === "town-hall" ? "openai" : null}
         placingActive={!!placing}
         roadTool={roadTool}
         movingId={movingId}
