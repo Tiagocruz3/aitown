@@ -10,13 +10,24 @@ import {
   isReady,
   type Camera,
 } from "../game/iso";
-import { PROVIDERS, ROAD, type ProviderId } from "../game/data";
+import { PROVIDERS, ROAD, TOWN_HALL, type ProviderId } from "../game/data";
+
+export type BuildingKind = "provider" | "town-hall";
 
 export interface PlacedBuilding {
   id: string;
-  provider: ProviderId;
+  kind: BuildingKind;
+  provider: ProviderId; // meaningful when kind === "provider"
   col: number;
   row: number;
+}
+
+// Art + accent color for any building (provider or town hall).
+export function buildingArtOf(b: PlacedBuilding): string {
+  return b.kind === "town-hall" ? TOWN_HALL.art : PROVIDERS[b.provider].buildingArt;
+}
+export function buildingColorOf(b: PlacedBuilding): string {
+  return b.kind === "town-hall" ? TOWN_HALL.color : PROVIDERS[b.provider].color;
 }
 
 export interface LiveAgent {
