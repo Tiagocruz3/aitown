@@ -285,7 +285,7 @@ export function GameCanvas({
               const h = w * (img.height / img.width);
               ctx!.drawImage(img, s.x - w / 2, s.y - h + TILE_H * 0.5 * cam.zoom, w, h);
             } else {
-              ctx!.fillStyle = def.color;
+              ctx!.fillStyle = bColor;
               ctx!.fillRect(s.x - w / 4, s.y - w * 0.6, w / 2, w * 0.6);
             }
             ctx!.restore();
