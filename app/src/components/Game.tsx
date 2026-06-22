@@ -247,19 +247,41 @@ export function Game() {
     showToast(`${PROVIDERS[b.provider].name} duplicated`);
   }
 
-  // open a building (route town-hall to its own modal)
+  // open a building (route town-hall to its own panel); closes the tray
   function openBuildingById(b: PlacedBuilding) {
+    setDockModal(null);
     setSelectedId(b.id);
-    if (b.kind === "town-hall") setOpenTownHall(b);
-    else setOpenBuilding(b);
+    if (b.kind === "town-hall") {
+      setOpenBuilding(null);
+      setOpenTownHall(b);
+    } else {
+      setOpenTownHall(null);
+      setOpenBuilding(b);
+    }
   }
 
   function openAgentById(id: string) {
+    setDockModal(null);
+    setOpenBuilding(null);
+    setOpenTownHall(null);
     setOpenAgentId(id);
   }
   function openAgentByProvider(p: ProviderId) {
     const a = agents.current.find((x) => x.provider === p);
-    if (a) setOpenAgentId(a.id);
+    if (a) openAgentById(a.id);
+  }
+
+  // toggle a bottom tray; opening one closes any right panel
+  function toggleTray(kind: DockKind) {
+    setDockModal((cur) => {
+      const next = cur === kind ? null : kind;
+      if (next) {
+        setOpenBuilding(null);
+        setOpenTownHall(null);
+        setOpenAgentId(null);
+      }
+      return next;
+    });
   }
 
   const liveAgents = agents.current;
