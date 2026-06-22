@@ -247,10 +247,11 @@ export function GameCanvas({
       const draws: Draw[] = [];
 
       for (const b of buildingsRef.current) {
-        const def = PROVIDERS[b.provider];
+        const bColor = buildingColorOf(b);
+        const bArt = buildingArtOf(b);
         const iso = gridToIso(b.col, b.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
-        const img = isReady(def.buildingArt) ? loadImage(def.buildingArt) : null;
+        const img = isReady(bArt) ? loadImage(bArt) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const isMoving = movingRef.current === b.id;
         draws.push({
@@ -260,7 +261,7 @@ export function GameCanvas({
             // brand glow pad under the building
             ctx!.save();
             ctx!.globalAlpha = 0.35;
-            ctx!.fillStyle = def.color;
+            ctx!.fillStyle = bColor;
             ctx!.beginPath();
             ctx!.ellipse(s.x, s.y, w * 0.42, w * 0.2, 0, 0, Math.PI * 2);
             ctx!.fill();
