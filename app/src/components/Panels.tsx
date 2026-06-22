@@ -170,11 +170,11 @@ export function BuildingPanel({
 
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <button onClick={onChat} className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold" style={{ background: def.color, color: def.ink }}>
-          💬 Chat {def.agent.name}
+          💬 Chat {cfg.agentName}
         </button>
         <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move</button>
         <button
-          onClick={() => { if (confirm(`Remove ${def.name}? This dismisses ${def.agent.name}.`)) onDelete(); }}
+          onClick={() => { if (confirm(`Remove ${def.name}? This dismisses ${cfg.agentName}.`)) onDelete(); }}
           className="ml-auto rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20"
         >🗑</button>
       </div>
