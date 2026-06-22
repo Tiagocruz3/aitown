@@ -441,7 +441,7 @@ export function GameCanvas({
       }
 
       // PLACE mode: drop a new building
-      if (placingRef.current) {
+      if (placingActiveRef.current) {
         if (
           inGrid &&
           !buildingAt(cell.col, cell.row) &&
