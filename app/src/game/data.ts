@@ -188,6 +188,8 @@ export interface DockCategory {
   label: string;
 }
 
+export const GRID_HELP = "Drag to pan · Scroll to zoom · Click a building or agent · Right-click a building for options";
+
 export const DOCK: DockCategory[] = [
   { id: "agents", icon: "🤖", label: "Agents" },
   { id: "buildings", icon: "🏢", label: "Buildings" },
