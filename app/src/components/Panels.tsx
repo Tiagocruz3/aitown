@@ -574,7 +574,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
       }
     } else {
       setTimeout(() => {
-        const done = [...next, { from: "agent" as const, text: mockReply(def.agent.name, def.agent.voice, text) }];
+        const done = [...next, { from: "agent" as const, text: mockReply(agentName, def.agent.voice, text) }];
         setMsgs(done);
         persistSession(done);
         setBusy(false);
