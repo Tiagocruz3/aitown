@@ -139,6 +139,7 @@ export function Game() {
   function chooseRoadTool(t: RoadTool | null) {
     setPlacing(null);
     setRoadTool(t);
+    if (t) setDockTab(null); // get the drawer out of the way while painting
   }
   function clearRoads() {
     roads.current = new Set();
