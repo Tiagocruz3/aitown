@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { PROVIDERS, PROVIDER_ORDER, TOWN_HALL, type ProviderId } from "../game/data";
 import { getConfig, setConfig, hasKey, type ProviderConfig } from "../game/config";
 import { chat, listModels } from "../lib/api/chat.functions";
+import {
+  getAgentStore,
+  saveSession,
+  deleteSession,
+  addProject,
+  deleteProject,
+  titleFromMessages,
+  type ChatSession,
+} from "../game/chatStore";
 import { BrandImg } from "./Modals";
 import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
 
