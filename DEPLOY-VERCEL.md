@@ -24,13 +24,25 @@ are inert for the Cloudflare/Vite build.
 5. **Deploy.** Vercel runs `bun install` → `bun run build`, serves
    `dist/client`, and routes everything else to the SSR function.
 
-## How it's wired (`app/vercel.json`)
+## ⚠️ If you get `404: NOT_FOUND`
 
-- `buildCommand: bun run build` — typecheck + Vite build.
-- `outputDirectory: dist/client` — hashed static assets served directly.
-- `rewrites: /(.*) → /api/index` — any non-static path (incl. `/` and server
-  functions) falls through to the SSR function. Static files are matched first,
-  so assets are never rewritten.
+That almost always means **Root Directory isn't set to `app`**, so Vercel built
+the (empty) repo root. Fix it in **Project → Settings → Build & Deployment →
+Root Directory → `app`**, then redeploy (Deployments → ⋯ → Redeploy). Everything
+in this app lives under `app/`, so this setting is required.
+
+## How it's wired (`app/vercel.json` + Build Output API)
+
+The build emits a Vercel **Build Output API** directory (`.vercel/output`), so
+routing is fully explicit — no framework guessing:
+
+- `buildCommand: bun run vercel-build` → `bun run build` (typecheck + Vite) then
+  `node scripts/vercel-build.mjs`, which assembles `.vercel/output`:
+  - `static/` ← `dist/client` (hashed assets, served first),
+  - `functions/ssr.func/` ← the SSR handler (`dist/server` + a Node entry),
+  - `config.json` → try a static file, otherwise route to the SSR function.
+- Any non-static path (incl. `/` and server functions) is handled by the SSR
+  function; static assets are served directly.
 
 ## Auto-deploy from GitHub Actions
 
