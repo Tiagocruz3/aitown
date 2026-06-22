@@ -637,7 +637,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 rows={1}
-                placeholder={`Message ${def.agent.name}…`}
+                placeholder={`Message ${agentName}…`}
                 className="max-h-28 flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/25"
               />
               <button onClick={send} disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: def.color, color: def.ink }}>Send</button>
