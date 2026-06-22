@@ -520,13 +520,13 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
 
   function newChat() {
     setSessionId(`s-${Date.now()}`);
-    setMsgs([{ from: "agent", text: def.agent.greeting }]);
+    setMsgs([{ from: "agent", text: greeting }]);
     setTab("chat");
   }
 
   function loadSession(s: ChatSession) {
     setSessionId(s.id);
-    setMsgs(s.messages.length ? s.messages : [{ from: "agent", text: def.agent.greeting }]);
+    setMsgs(s.messages.length ? s.messages : [{ from: "agent", text: greeting }]);
     setTab("chat");
   }
 
