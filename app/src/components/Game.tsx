@@ -144,8 +144,11 @@ export function Game() {
       <GameCanvas
         buildings={buildings}
         agents={agents}
+        roads={roads}
         placing={placing}
+        roadTool={roadTool}
         onPlace={place}
+        onPaintRoad={paintRoad}
         onPickBuilding={(b) => setOpenBuilding(b)}
         onPickAgent={(id) => {
           const a = agents.current.find((x) => x.id === id);
