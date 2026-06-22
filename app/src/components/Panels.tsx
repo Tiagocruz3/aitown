@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { PROVIDERS, PROVIDER_ORDER, TOWN_HALL, type ProviderId } from "../game/data";
 import { getConfig, setConfig, hasKey, type ProviderConfig } from "../game/config";
-import { chat } from "../lib/api/chat.functions";
+import { chat, listModels } from "../lib/api/chat.functions";
 import { BrandImg } from "./Modals";
 import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
+
+type ModelOpt = { id: string; label: string };
 
 /* ==================================================================
    Right-side slide-in shell. Never covers the city center — anchored
