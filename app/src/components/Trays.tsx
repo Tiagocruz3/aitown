@@ -180,7 +180,7 @@ function AgentsTray({ agents, onOpenAgent }: { agents: LiveAgent[]; onOpenAgent:
             {agents.map((a) => {
               const p = PROVIDERS[a.provider];
               return (
-                <Tile key={a.id} art={p.agentArt} label={p.agent.name} desc={p.agent.title} accent={p.color} onClick={() => onOpenAgent(a.id)} />
+                <Tile key={a.id} art={p.agentArt} label={a.name} desc={p.agent.title} accent={p.color} onClick={() => onOpenAgent(a.id)} />
               );
             })}
           </HScroll>
