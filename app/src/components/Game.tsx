@@ -90,6 +90,12 @@ export function Game() {
             (b: PlacedBuilding) => b && PROVIDER_ORDER.includes(b.provider),
           );
         }
+        if (Array.isArray(data?.roads)) {
+          roads.current = new Set(
+            data.roads.filter((k: unknown): k is string => typeof k === "string"),
+          );
+          setRoadCount(roads.current.size);
+        }
       }
     } catch {
       /* ignore */
@@ -101,13 +107,10 @@ export function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // persist
+  // persist (buildings + roads)
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ buildings }));
-    } catch {
-      /* ignore */
-    }
+    persist(buildings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildings]);
 
   function showToast(t: string) {
