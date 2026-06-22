@@ -117,10 +117,10 @@ export function GameCanvas({
         const img = isReady(art) ? loadImage(art) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const h = img ? w * (img.height / img.width) : w;
-        const top = s.y - h + TILE_H * 0.5 * cam.zoom;
+        const top = s.y - h; // base anchored at the tile center (matches render)
         const left = s.x - w / 2;
         // generous box, trimmed a touch on the sides to feel right
-        if (px >= left + w * 0.12 && px <= left + w * 0.88 && py >= top + h * 0.05 && py <= s.y + TILE_H * 0.4 * cam.zoom) {
+        if (px >= left + w * 0.12 && px <= left + w * 0.88 && py >= top + h * 0.05 && py <= s.y + TILE_H * 0.25 * cam.zoom) {
           return b;
         }
       }
@@ -290,7 +290,10 @@ export function GameCanvas({
             if (isMoving) ctx!.globalAlpha = 0.65;
             if (img) {
               const h = w * (img.height / img.width);
-              ctx!.drawImage(img, s.x - w / 2, s.y - h + TILE_H * 0.5 * cam.zoom, w, h);
+              // Anchor the building's base at the tile CENTER (s.y) — same as
+              // agents and the glow pad — so it sits squarely in the diamond
+              // instead of on the bottom grid corner between tiles.
+              ctx!.drawImage(img, s.x - w / 2, s.y - h, w, h);
             } else {
               ctx!.fillStyle = bColor;
               ctx!.fillRect(s.x - w / 4, s.y - w * 0.6, w / 2, w * 0.6);

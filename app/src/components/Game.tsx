@@ -8,8 +8,8 @@ import {
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
-import { ContextMenu, BrandImg } from "./Modals";
-import { agentNameOf, hasKey } from "../game/config";
+import { ContextMenu } from "./Modals";
+import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
@@ -424,15 +424,6 @@ export function Game() {
         </div>
       )}
 
-      {/* selected-building info card (top-left, Town Star style) */}
-      {selected && !movingId && (
-        <BuildingInfoCard
-          building={selected}
-          onOpen={() => openBuildingById(selected)}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-
       {/* hint */}
       <div className="pointer-events-none absolute bottom-28 left-4 hidden max-w-xs rounded-lg bg-black/30 px-3 py-1.5 text-[11px] text-white/70 backdrop-blur sm:block">
         {GRID_HELP}
@@ -554,78 +545,3 @@ function Pill({ icon, label }: { icon: string; label: string }) {
     </div>
   );
 }
-
-/* Town Star-style top-left building info card */
-function BuildingInfoCard({
-  building,
-  onOpen,
-  onClose,
-}: {
-  building: PlacedBuilding;
-  onOpen: () => void;
-  onClose: () => void;
-}) {
-  const isHall = building.kind === "town-hall";
-  const name = isHall ? "Town Hall" : PROVIDERS[building.provider].name;
-  const sub = isHall ? "OS control center" : PROVIDERS[building.provider].company;
-  const art = isHall ? TOWN_HALL.art : PROVIDERS[building.provider].buildingArt;
-  const agent = isHall ? null : agentNameOf(building.provider);
-  const color = isHall ? TOWN_HALL.color : PROVIDERS[building.provider].color;
-  // Provider buildings need an API connection — surface its status here.
-  const connected = isHall ? false : hasKey(building.provider);
-  return (
-    <div className="absolute left-4 top-20 z-20 w-[260px] rounded-2xl bg-[#F0F4E1]/95 p-3 shadow-xl backdrop-blur">
-      <div className="flex items-start gap-3">
-        <BrandImg src={art} alt={name} className="h-14 w-14 object-contain" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-lg font-extrabold leading-tight text-[#2a2f1e]">{name}</div>
-          <div className="truncate text-xs font-medium text-[#5b6047]">{sub}</div>
-        </div>
-        <button onClick={onClose} className="text-[#5b6047] hover:text-[#2a2f1e]">
-          ✕
-        </button>
-      </div>
-      <div className="mt-2 space-y-1.5">
-        <StatBar icon="🤖" value={isHall ? "Control center" : `${agent} on duty`} color={color} />
-        {!isHall && (
-          <div className="flex items-center gap-2">
-            <span className="text-base">🔌</span>
-            <div
-              className="flex flex-1 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2a2f1e] shadow-inner"
-              style={{ boxShadow: `inset 0 0 0 1.5px ${(connected ? "#22c55e" : "#9ca3af")}66` }}
-            >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ background: connected ? "#22c55e" : "#9ca3af" }}
-              />
-              {connected ? "API connected" : "Not connected · demo"}
-            </div>
-          </div>
-        )}
-        <StatBar icon="📍" value={`Tile ${building.col}, ${building.row}`} />
-      </div>
-      <button
-        onClick={onOpen}
-        className="mt-2.5 w-full rounded-xl py-2 text-sm font-bold text-white shadow"
-        style={{ background: color }}
-      >
-        {isHall ? "Open Town Hall" : "⚙️ Settings"}
-      </button>
-    </div>
-  );
-}
-
-function StatBar({ icon, value, color }: { icon: string; value: string; color?: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-base">{icon}</span>
-      <div
-        className="flex-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2a2f1e] shadow-inner"
-        style={color ? { boxShadow: `inset 0 0 0 1.5px ${color}55` } : undefined}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
