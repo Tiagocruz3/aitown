@@ -68,6 +68,7 @@ export function BuildingPanel({
   onMove,
   onDelete,
   onChat,
+  onSaved,
 }: {
   building: PlacedBuilding;
   onClose: () => void;
@@ -75,6 +76,7 @@ export function BuildingPanel({
   onMove: () => void;
   onDelete: () => void;
   onChat: () => void;
+  onSaved?: () => void;
 }) {
   const def = PROVIDERS[building.provider];
   const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
