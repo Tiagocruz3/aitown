@@ -1,12 +1,15 @@
-// Server-only access to this app's Cloudflare bindings. Each is present ONLY if
-// opted into via app.manifest.json (D1 `DB`, R2 `STORAGE`, KV `KV`, and the
-// container `CONTAINER`) — so the accessors are optional; guard before use.
-// `cloudflare:workers` is the Workers-runtime module that exposes the Worker
-// env (bindings) — usable inside any server-side code (server functions,
-// server routes). It is NOT bundled; the runtime provides it.
-import { env } from "cloudflare:workers";
-// Import the binding types directly — NOT via the global tsconfig `types` list,
-// which would clobber the DOM globals the client/SSR React code relies on.
+// Server-only environment access.
+//
+// Originally this read Cloudflare Worker bindings via `cloudflare:workers`.
+// That module only exists inside the Workers runtime, so to stay portable
+// (Node / Vercel as well as Cloudflare) we read from `process.env` instead.
+// This app opts into NO infra (db/r2/kv all false in app.manifest.json), so
+// there are no real bindings to expose — only plain env vars. On the
+// Higgsfield Worker `process.env` is populated by `nodejs_compat`; on
+// Node/Vercel it is the standard environment.
+import process from "node:process";
+// Type-only import (erased at build) — keeps the binding shapes documented
+// without pulling the Cloudflare runtime module into the bundle.
 import type {
   D1Database,
   DurableObjectNamespace,
@@ -18,14 +21,11 @@ type AppEnv = {
   DB?: D1Database;
   STORAGE?: R2Bucket;
   KV?: KVNamespace;
-  // The container's Durable Object — present only when "container" is set in
-  // the manifest. Reach an instance with env.CONTAINER.getByName(id), then
-  // .fetch(). See skills/containers.md.
   CONTAINER?: DurableObjectNamespace;
   HF_ENV?: string;
   APP_SLUG?: string;
 };
 
 export function bindings(): AppEnv {
-  return env as unknown as AppEnv;
+  return (process.env ?? {}) as unknown as AppEnv;
 }
