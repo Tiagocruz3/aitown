@@ -354,15 +354,23 @@ function DockIcon({ id, fallback }: { id: string; fallback: string }) {
 function DockDrawer({
   tab,
   buildings,
+  roadCount,
+  roadTool,
   onClose,
   onPlace,
   onOpenAgent,
+  onRoadTool,
+  onClearRoads,
 }: {
   tab: string;
   buildings: PlacedBuilding[];
+  roadCount: number;
+  roadTool: RoadTool | null;
   onClose: () => void;
   onPlace: (p: ProviderId) => void;
   onOpenAgent: (p: ProviderId) => void;
+  onRoadTool: (t: RoadTool | null) => void;
+  onClearRoads: () => void;
 }) {
   // which providers currently have a building (=> have a live agent)
   const placedProviders = Array.from(new Set(buildings.map((b) => b.provider)));
