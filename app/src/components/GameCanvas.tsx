@@ -95,8 +95,8 @@ export function GameCanvas({
   buildingsRef.current = buildings;
   roadToolRef.current = roadTool;
   movingRef.current = movingId;
-  const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onContextBuilding });
-  cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onContextBuilding };
+  const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding });
+  cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding };
 
   const buildingAt = useCallback((col: number, row: number) => {
     return buildingsRef.current.find((b) => b.col === col && b.row === row);
