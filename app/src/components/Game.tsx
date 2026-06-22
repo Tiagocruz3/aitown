@@ -482,6 +482,7 @@ export function Game() {
           onMove={() => startMoving(openBuilding)}
           onDelete={() => deleteBuilding(openBuilding)}
           onChat={() => openAgentByProvider(openBuilding.provider)}
+          onSaved={syncAgentNames}
         />
       )}
       {openTownHall && (
