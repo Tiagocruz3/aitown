@@ -16,6 +16,32 @@ import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
 
 type ModelOpt = { id: string; label: string };
 
+// Client → plain API routes (no server-function serialization layer).
+async function apiModels(input: { provider: string; apiKey: string; apiBase: string }): Promise<{ models: ModelOpt[]; error?: string }> {
+  const res = await fetch("/api/models", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return res.json();
+}
+
+async function apiChat(input: {
+  provider: string;
+  apiKey: string;
+  apiBase: string;
+  model: string;
+  system: string;
+  messages: { role: "user" | "assistant"; content: string }[];
+}): Promise<{ text: string; error?: string }> {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return res.json();
+}
+
 /* ==================================================================
    Right-side slide-in shell. Never covers the city center — anchored
    to the right edge, fixed width, the world stays visible at left.
