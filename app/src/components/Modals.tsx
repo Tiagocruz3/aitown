@@ -389,7 +389,7 @@ export function ContextMenu({
 }
 
 // Renders a cross-origin image as a normal <img>; falls back to a colored chip if it fails.
-function BrandImg({ src, alt, className }: { src: string; alt: string; className?: string }) {
+export function BrandImg({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [ok, setOk] = useState(true);
   if (!ok) {
     return <div className={className} style={{ borderRadius: 12, background: "#ffffff14" }} aria-label={alt} />;
