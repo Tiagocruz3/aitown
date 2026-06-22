@@ -109,78 +109,62 @@ export function BuildingPanel({
   const def = PROVIDERS[building.provider];
   const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
   const [showKey, setShowKey] = useState(false);
-  const [models, setModels] = useState<ModelOpt[]>(def.models);
+  // Models are ONLY ever the live catalog pulled from the provider API — no
+  // hardcoded presets. Empty until a successful connect.
+  const [models, setModels] = useState<ModelOpt[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   const [testState, setTestState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
   const [testMsg, setTestMsg] = useState<string | null>(null);
-  const connected = cfg.apiKey.trim().length > 0;
+  const hasApiKey = cfg.apiKey.trim().length > 0;
+  const connected = testState === "ok";
 
-  // Fetch the provider's real model catalog using the entered key.
-  async function refreshModels(silent = false) {
+  // Connect = verify the key by pulling the provider's REAL model list. A
+  // non-empty live catalog is what marks the building as connected; those are
+  // the only models offered for selection.
+  async function connect(silent = false) {
     if (!cfg.apiKey.trim()) {
-      setModelError("Enter your API key to load the live model list.");
+      setTestState("fail");
+      setTestMsg("Enter your API key first.");
       return;
     }
+    setTestState("testing");
     setLoadingModels(true);
-    if (!silent) setModelError(null);
+    if (!silent) setTestMsg(null);
+    setModelError(null);
     try {
       const res = await apiModels({ provider: building.provider, apiKey: cfg.apiKey, apiBase: cfg.apiBase });
       if (res.error) {
-        setModelError(res.error);
+        setTestState("fail");
+        setTestMsg(res.error);
+        setModels([]);
       } else if (res.models?.length) {
         setModels(res.models);
-        setModelError(null);
-        // if current model isn't in the live list, snap to the first one
+        // snap the saved model onto a real one if it isn't in the live list
         if (!res.models.some((m) => m.id === cfg.model)) {
           setCfg((c) => ({ ...c, model: res.models[0].id }));
         }
+        setTestState("ok");
+        setTestMsg(`Connected — ${res.models.length} live models from ${def.company}.`);
       } else {
-        setModelError("Provider returned no models.");
+        setTestState("fail");
+        setTestMsg("Connected, but the provider returned no models.");
+        setModels([]);
       }
     } catch (err) {
-      setModelError((err as Error).message);
+      setTestState("fail");
+      setTestMsg((err as Error).message);
+      setModels([]);
     } finally {
       setLoadingModels(false);
     }
   }
 
-  // Auto-load models once when opening a building that already has a saved key.
+  // Auto-connect when opening a building that already has a saved key.
   useEffect(() => {
-    if (getConfig(building.provider).apiKey.trim()) refreshModels(true);
+    if (getConfig(building.provider).apiKey.trim()) connect(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [building.id]);
-
-  // Live "test connection": send a 1-token ping through the chat proxy.
-  async function testConnection() {
-    if (!cfg.apiKey.trim()) {
-      setTestState("fail");
-      setTestMsg("Enter an API key first.");
-      return;
-    }
-    setTestState("testing");
-    setTestMsg(null);
-    try {
-      const res = await apiChat({
-        provider: building.provider,
-        apiKey: cfg.apiKey,
-        apiBase: cfg.apiBase,
-        model: cfg.model,
-        system: "You are a connection tester. Reply with the single word OK.",
-        messages: [{ role: "user", content: "ping" }],
-      });
-      if (res.error) {
-        setTestState("fail");
-        setTestMsg(res.error);
-      } else {
-        setTestState("ok");
-        setTestMsg(`Connected — ${def.company} replied.`);
-      }
-    } catch (err) {
-      setTestState("fail");
-      setTestMsg((err as Error).message);
-    }
-  }
 
   function save() {
     setConfig(building.provider, cfg);
@@ -211,10 +195,31 @@ export function BuildingPanel({
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: connected ? "#22c55e55" : "#ffffff14", background: connected ? "#22c55e14" : "#ffffff06" }}>
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: connected ? "#22c55e" : "#9ca3af" }} />
-          <span className="font-medium text-white/85">{connected ? "Key set — live API calls enabled" : "No key — mock replies"}</span>
-        </div>
+        {(() => {
+          const status: "ok" | "pending" | "fail" | "off" = connected
+            ? "ok"
+            : hasApiKey
+              ? testState === "fail"
+                ? "fail"
+                : "pending"
+              : "off";
+          const map = {
+            ok: { c: "#22c55e", t: `Connected — live ${def.company} API` },
+            pending: { c: "#f59e0b", t: "Key set — click Connect to verify & load models" },
+            fail: { c: "#ef4444", t: "Connection failed — check your key & endpoint" },
+            off: { c: "#9ca3af", t: "Not connected — demo mode (mock replies)" },
+          } as const;
+          const s = map[status];
+          return (
+            <div className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: `${s.c}55`, background: `${s.c}14` }}>
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: s.c, boxShadow: status === "ok" ? `0 0 8px ${s.c}` : undefined }}
+              />
+              <span className="font-medium text-white/85">{s.t}</span>
+            </div>
+          );
+        })()}
 
         {/* Agent identity: custom name + system prompt */}
         <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3" style={{ boxShadow: `inset 0 -3px 0 ${def.color}` }}>
@@ -273,57 +278,25 @@ export function BuildingPanel({
           <input value={cfg.apiBase} onChange={(e) => setCfg({ ...cfg, apiBase: e.target.value })} spellCheck={false} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/25" />
         </Field>
 
-        <Field
-          label="Model"
-          hint={loadingModels ? "loading…" : models.length ? `${models.length} available` : undefined}
-        >
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <select
-                value={cfg.model}
-                onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
-                className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-9 text-sm text-white outline-none focus:border-white/25"
-                style={{ borderColor: `${def.color}66` }}
-              >
-                {/* ensure the current model is selectable even if not in the list */}
-                {!models.some((m) => m.id === cfg.model) && cfg.model && (
-                  <option value={cfg.model}>{cfg.model}</option>
-                )}
-                {models.map((m) => (
-                  <option key={m.id} value={m.id} className="bg-[#11131c]">
-                    {m.label}{m.label !== m.id ? ` — ${m.id}` : ""}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
-            </div>
-            <button
-              onClick={() => refreshModels(false)}
-              disabled={loadingModels}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-semibold text-white/70 hover:bg-white/10 disabled:opacity-50"
-              title="Fetch the live model list from the provider"
-            >
-              {loadingModels ? "…" : "↻ Models"}
-            </button>
-          </div>
-          {modelError && (
-            <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">{modelError}</p>
-          )}
-        </Field>
-
-        {/* Test connection */}
+        {/* Connect — verifies the key and loads the live model list */}
         <div>
           <button
-            onClick={testConnection}
-            disabled={testState === "testing"}
-            className="w-full rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-60"
+            onClick={() => connect(false)}
+            disabled={testState === "testing" || !hasApiKey}
+            className="w-full rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:opacity-50"
             style={{
-              borderColor: testState === "ok" ? "#22c55e66" : testState === "fail" ? "#ef444466" : "#ffffff1a",
-              background: testState === "ok" ? "#22c55e14" : testState === "fail" ? "#ef444414" : "#ffffff06",
-              color: "#fff",
+              borderColor: testState === "ok" ? "#22c55e66" : testState === "fail" ? "#ef444466" : `${def.color}66`,
+              background: testState === "ok" ? "#22c55e1f" : testState === "fail" ? "#ef44441f" : def.color,
+              color: testState === "ok" || testState === "fail" ? "#fff" : def.ink,
             }}
           >
-            {testState === "testing" ? "Testing…" : testState === "ok" ? "✓ Connection works" : testState === "fail" ? "✗ Test failed — retry" : "Test connection"}
+            {testState === "testing"
+              ? "Connecting…"
+              : testState === "ok"
+                ? "✓ Connected — Reconnect"
+                : testState === "fail"
+                  ? "✗ Connection failed — retry"
+                  : "🔌 Connect"}
           </button>
           {testMsg && (
             <p
@@ -335,8 +308,42 @@ export function BuildingPanel({
           )}
         </div>
 
+        <Field
+          label="Model"
+          hint={loadingModels ? "loading…" : models.length ? `${models.length} live models` : "needs connection"}
+        >
+          {models.length ? (
+            <div className="relative">
+              <select
+                value={cfg.model}
+                onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
+                className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-9 text-sm text-white outline-none focus:border-white/25"
+                style={{ borderColor: `${def.color}66` }}
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id} className="bg-[#11131c]">
+                    {m.label}{m.label !== m.id ? ` — ${m.id}` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-3 py-2.5 text-sm text-white/45">
+              {loadingModels
+                ? "Loading the provider's live models…"
+                : hasApiKey
+                  ? "Click Connect to load this provider's real models."
+                  : "Connect your API key to load real models — no presets are used."}
+            </div>
+          )}
+          {modelError && (
+            <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">{modelError}</p>
+          )}
+        </Field>
+
         <p className="text-[11px] leading-relaxed text-white/40">
-          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats or you test the connection. Leave blank for mock replies.
+          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats or you connect. Models shown are pulled live from {def.company} — leave the key blank for demo replies.
         </p>
       </div>
 

@@ -317,7 +317,7 @@ function buildingActions(
   const items: DockItem[] = [
     {
       id: "act-open",
-      label: isHall ? "Open" : "Configure",
+      label: "Settings",
       emoji: "⚙️",
       onSelect: () => h.onOpenBuilding(b),
     },
