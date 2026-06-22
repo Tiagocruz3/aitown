@@ -318,7 +318,7 @@ function WorkforceTray({
         <HScroll>
           {agents.map((a) => {
             const p = PROVIDERS[a.provider];
-            return <Tile key={a.id} art={p.agentArt} label={p.agent.name} desc={a.state} accent={p.color} onClick={() => onOpenAgent(a.id)} />;
+            return <Tile key={a.id} art={p.agentArt} label={a.name} desc={a.state} accent={p.color} onClick={() => onOpenAgent(a.id)} />;
           })}
         </HScroll>
       ) : (
