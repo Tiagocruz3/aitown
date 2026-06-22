@@ -46,7 +46,7 @@ const ModelsInput = z.object({
 });
 
 export const listModels = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => ModelsInput.parse(d))
+  .inputValidator((d: unknown) => d as z.infer<typeof ModelsInput>)
   .handler(async ({ data }) => {
     const key = (data.apiKey || envKey(data.provider)).trim();
     if (!key) return { models: [] as { id: string; label: string }[], error: "No API key — enter one to load models." };
