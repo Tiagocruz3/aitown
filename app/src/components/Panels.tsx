@@ -17,14 +17,9 @@ import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
 
 type ModelOpt = { id: string; label: string };
 
-// Client → plain API routes (no server-function serialization layer).
+// Client → server functions.
 async function apiModels(input: { provider: string; apiKey: string; apiBase: string }): Promise<{ models: ModelOpt[]; error?: string }> {
-  const res = await fetch("/api/models", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return res.json();
+  return listModels({ data: input });
 }
 
 async function apiChat(input: {
@@ -35,12 +30,7 @@ async function apiChat(input: {
   system: string;
   messages: { role: "user" | "assistant"; content: string }[];
 }): Promise<{ text: string; error?: string }> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  return res.json();
+  return chat({ data: input });
 }
 
 /* ==================================================================
