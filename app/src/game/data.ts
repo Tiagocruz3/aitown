@@ -183,15 +183,43 @@ export const PROVIDER_ORDER: ProviderId[] = [
 
 // ---- Dock -------------------------------------------------------------------
 
+// Town Star-style rendered dock icons (glossy 3D, transparent PNG).
+export const DOCK_ICONS = {
+  agents: CDN + "hf_20260622_091949_0c28e160-7a85-465b-af5d-87a9302ba757.png",
+  buildings: CDN + "hf_20260622_091951_a48c5078-bd9a-4855-965d-9e1eab6e4d95.png",
+  workflows: CDN + "hf_20260622_091953_4a135791-fd17-49d4-bd59-b821db101e88.png",
+  integrations:
+    CDN + "hf_20260622_091957_21a3f884-be1f-403a-be93-84e5c470a96e.png",
+  workforce: CDN + "hf_20260622_091959_b38446cc-0ae6-4a9f-acc6-4b0d5aec5eee.png",
+  missions: CDN + "hf_20260622_092001_bc644f75-da91-4097-a10d-0567fc8939d9.png",
+  assets: CDN + "hf_20260622_092003_7967c902-d359-434c-99fd-8db19123558c.png",
+  marketplace:
+    CDN + "hf_20260622_092005_b0c4c365-b2e8-4b9c-b129-e31d8235c74e.png",
+  world: CDN + "hf_20260622_092008_1dad692a-ff19-43dd-be4d-a0c1786454e5.png",
+} as const;
+
+// Modal kinds opened by each dock category.
+export type DockKind =
+  | "agents"
+  | "buildings"
+  | "workflows"
+  | "integrations"
+  | "workforce"
+  | "missions"
+  | "assets"
+  | "marketplace"
+  | "world"
+  | "roads";
+
 export interface DockCategory {
-  id: string;
-  icon: string; // emoji fallback
+  id: DockKind;
+  icon: string; // rendered icon url
+  emoji: string; // emoji fallback while art loads
   label: string;
-  kind: "chat-agents" | "buildings" | "panel";
 }
 
 export const GRID_HELP =
-  "Drag to pan · Scroll to zoom · Click a building to configure / move / remove it · Open Roads to paint paths · Click an agent to chat · Right-click a building for quick options";
+  "Drag to pan · Scroll to zoom · Open a dock category to build · Click a building to configure / move / remove · Click an agent to chat · Right-click a building for quick options";
 
 // Road tile colors (flat, drawn under buildings & agents).
 export const ROAD = {
@@ -200,13 +228,158 @@ export const ROAD = {
   dash: "#d9c66a",
 } as const;
 
-// First category is Chat Agents, then the 4 provider Buildings, Roads, then panels.
+// The 9-category dock, in the spec order.
 export const DOCK: DockCategory[] = [
-  { id: "chat-agents", icon: "💬", label: "Chat Agents", kind: "chat-agents" },
-  { id: "buildings", icon: "🏢", label: "Buildings", kind: "buildings" },
-  { id: "roads", icon: "🛣️", label: "Roads", kind: "panel" },
-  { id: "workforce", icon: "👥", label: "Workforce", kind: "panel" },
-  { id: "integrations", icon: "🔌", label: "Integrations", kind: "panel" },
-  { id: "marketplace", icon: "🛒", label: "Marketplace", kind: "panel" },
-  { id: "world", icon: "🌍", label: "World", kind: "panel" },
+  { id: "agents", icon: DOCK_ICONS.agents, emoji: "🤖", label: "Agents" },
+  { id: "buildings", icon: DOCK_ICONS.buildings, emoji: "🏢", label: "Buildings" },
+  { id: "workflows", icon: DOCK_ICONS.workflows, emoji: "⚡", label: "Workflows" },
+  {
+    id: "integrations",
+    icon: DOCK_ICONS.integrations,
+    emoji: "🔌",
+    label: "Integrations",
+  },
+  { id: "workforce", icon: DOCK_ICONS.workforce, emoji: "👥", label: "Workforce" },
+  { id: "missions", icon: DOCK_ICONS.missions, emoji: "📋", label: "Missions" },
+  { id: "assets", icon: DOCK_ICONS.assets, emoji: "📦", label: "Assets" },
+  {
+    id: "marketplace",
+    icon: DOCK_ICONS.marketplace,
+    emoji: "🛒",
+    label: "Marketplace",
+  },
+  { id: "world", icon: DOCK_ICONS.world, emoji: "🌍", label: "World" },
 ];
+
+// ---- Library / modal content -----------------------------------------------
+
+// Agent Library categories (the "Agents" dock modal).
+export const AGENT_LIBRARY: { id: string; emoji: string; label: string; desc: string }[] = [
+  { id: "create", emoji: "✨", label: "Create Agent", desc: "Design a custom AI worker from scratch." },
+  { id: "import", emoji: "📥", label: "Import Agent", desc: "OpenAI, CrewAI, LangGraph, JSON packages." },
+  { id: "chat", emoji: "💬", label: "Chat Agents", desc: "General-purpose conversational helpers." },
+  { id: "research", emoji: "🔬", label: "Research Agents", desc: "Web search, reports, knowledge bases." },
+  { id: "developer", emoji: "💻", label: "Developer Agents", desc: "Code, automation, deployment." },
+  { id: "marketing", emoji: "📣", label: "Marketing Agents", desc: "Campaigns, social, content." },
+  { id: "design", emoji: "🎨", label: "Design Agents", desc: "Images, branding, video assets." },
+  { id: "sales", emoji: "💼", label: "Sales Agents", desc: "CRM, leads, outreach." },
+  { id: "support", emoji: "🎧", label: "Support Agents", desc: "Customer support & tickets." },
+  { id: "custom", emoji: "🧩", label: "Custom Agents", desc: "Your bespoke specialists." },
+];
+
+// Building Library categories (the "Buildings" dock modal).
+// Each provider building is placeable; the rest are showcased as "coming soon"
+// facilities so the city library feels complete.
+export const BUILDING_LIBRARY: {
+  id: string;
+  emoji: string;
+  label: string;
+  desc: string;
+  provider?: ProviderId; // if set, placing it spawns this provider's agent
+}[] = [
+  { id: "openai", emoji: "🟢", label: "OpenAI HQ", desc: "Spawns Nova, your OpenAI agent.", provider: "openai" },
+  { id: "anthropic", emoji: "🟠", label: "Anthropic Studio", desc: "Spawns Claude, your Anthropic agent.", provider: "anthropic" },
+  { id: "grok", emoji: "🔵", label: "Grok Tower", desc: "Spawns Grok, your xAI agent.", provider: "grok" },
+  { id: "openrouter", emoji: "🟣", label: "OpenRouter Hub", desc: "Spawns Router, multi-model access.", provider: "openrouter" },
+  { id: "research-lab", emoji: "🔬", label: "Research Lab", desc: "Research, reports, knowledge base." },
+  { id: "builder-workshop", emoji: "🛠️", label: "Builder Workshop", desc: "App dev, automation, deploys." },
+  { id: "social-hub", emoji: "📣", label: "Social Hub", desc: "Social media, campaigns, scheduling." },
+  { id: "design-studio", emoji: "🎨", label: "Design Studio", desc: "Images, branding, video." },
+  { id: "sales-center", emoji: "💼", label: "Sales Center", desc: "CRM, leads, outreach." },
+  { id: "finance-office", emoji: "💰", label: "Finance Office", desc: "Revenue, invoices, budgets." },
+];
+
+// Workflows (production systems).
+export const WORKFLOWS: { id: string; emoji: string; label: string; desc: string }[] = [
+  { id: "tiktok", emoji: "🎵", label: "TikTok Factory", desc: "Daily short-form video at scale." },
+  { id: "leadgen", emoji: "🎯", label: "Lead Generation Center", desc: "Find, enrich & qualify leads." },
+  { id: "website", emoji: "🌐", label: "Website Factory", desc: "Spin up landing pages fast." },
+  { id: "automation", emoji: "⚙️", label: "Automation Factory", desc: "Chain tasks end-to-end." },
+  { id: "podcast", emoji: "🎙️", label: "Podcast Factory", desc: "Scripted & produced episodes." },
+  { id: "course", emoji: "🎓", label: "Course Factory", desc: "Build & package courses." },
+  { id: "newsletter", emoji: "📧", label: "Newsletter Factory", desc: "Research, write, schedule." },
+];
+
+// Integration catalog grouped by category (the "Integrations" dock modal).
+export const INTEGRATIONS: { group: string; items: { id: string; emoji: string; label: string }[] }[] = [
+  {
+    group: "AI Providers",
+    items: [
+      { id: "openai", emoji: "🟢", label: "OpenAI" },
+      { id: "anthropic", emoji: "🟠", label: "Anthropic" },
+      { id: "gemini", emoji: "🔷", label: "Gemini" },
+      { id: "grok", emoji: "🔵", label: "Grok" },
+      { id: "deepseek", emoji: "🐳", label: "DeepSeek" },
+      { id: "openrouter", emoji: "🟣", label: "OpenRouter" },
+      { id: "lmstudio", emoji: "🖥️", label: "LM Studio" },
+      { id: "ollama", emoji: "🦙", label: "Ollama" },
+    ],
+  },
+  {
+    group: "Development",
+    items: [
+      { id: "github", emoji: "🐙", label: "GitHub" },
+      { id: "vercel", emoji: "▲", label: "Vercel" },
+      { id: "supabase", emoji: "⚡", label: "Supabase" },
+      { id: "netlify", emoji: "🌐", label: "Netlify" },
+    ],
+  },
+  {
+    group: "Productivity",
+    items: [
+      { id: "google", emoji: "🔎", label: "Google" },
+      { id: "notion", emoji: "📓", label: "Notion" },
+      { id: "slack", emoji: "💬", label: "Slack" },
+      { id: "discord", emoji: "🎮", label: "Discord" },
+      { id: "dropbox", emoji: "📦", label: "Dropbox" },
+    ],
+  },
+  {
+    group: "Design",
+    items: [
+      { id: "canva", emoji: "🎨", label: "Canva" },
+      { id: "figma", emoji: "🖌️", label: "Figma" },
+      { id: "adobe", emoji: "🅰️", label: "Adobe" },
+    ],
+  },
+  {
+    group: "Marketing",
+    items: [
+      { id: "tiktok", emoji: "🎵", label: "TikTok" },
+      { id: "instagram", emoji: "📸", label: "Instagram" },
+      { id: "facebook", emoji: "👍", label: "Facebook" },
+      { id: "youtube", emoji: "▶️", label: "YouTube" },
+      { id: "linkedin", emoji: "💼", label: "LinkedIn" },
+      { id: "x", emoji: "✖️", label: "X" },
+    ],
+  },
+];
+
+// Workforce sections, Mission sections, Asset sections, Marketplace sections,
+// World sections — used as tabs/lists inside their respective modals.
+export const WORKFORCE_SECTIONS = ["All Agents", "Teams", "Departments", "Performance", "Revenue", "Assignments"];
+export const MISSION_SECTIONS = ["Active Missions", "Completed Missions", "Scheduled Missions", "Templates"];
+export const ASSET_SECTIONS = ["Buildings", "Agents", "Models", "Voices", "Images", "Documents", "Knowledge Bases"];
+export const MARKETPLACE_SECTIONS = ["Agents", "Buildings", "Workflows", "Plugins", "Themes", "Templates"];
+export const WORLD_SECTIONS = ["Cities", "Alliances", "Trade", "Agent Rentals", "Leaderboards"];
+
+// Town Hall — a physical building (NOT in the dock). Its modal is the OS control center.
+export const TOWN_HALL = {
+  id: "town-hall",
+  name: "Town Hall",
+  emoji: "🏛️",
+  // Reuse the buildings dock icon as the placed sprite until dedicated art exists.
+  art: DOCK_ICONS.buildings,
+  color: "#caa24a",
+  color2: "#a8852f",
+  tabs: [
+    "Dashboard",
+    "AI Providers",
+    "Integrations",
+    "Agent Registry",
+    "Building Registry",
+    "Permissions",
+    "Billing",
+    "System Settings",
+  ],
+} as const;
