@@ -218,20 +218,45 @@ export function Game() {
         </div>
       )}
 
+      {/* road tool banner */}
+      {roadTool && (
+        <div className="absolute left-1/2 top-20 -translate-x-1/2 flex items-center gap-3 rounded-full border border-white/20 bg-[#5d5f68] px-5 py-2 text-sm font-semibold text-white shadow-lg">
+          <span>
+            {roadTool === "road" ? "🛣️ Click or drag to paint roads" : "🧽 Click or drag to erase roads"}
+          </span>
+          <button
+            className={`rounded-full px-2 py-0.5 text-xs ${roadTool === "road" ? "bg-white text-black" : "bg-white/20"}`}
+            onClick={() => chooseRoadTool("road")}
+          >
+            Paint
+          </button>
+          <button
+            className={`rounded-full px-2 py-0.5 text-xs ${roadTool === "erase-road" ? "bg-white text-black" : "bg-white/20"}`}
+            onClick={() => chooseRoadTool("erase-road")}
+          >
+            Erase
+          </button>
+          <button className="underline" onClick={() => chooseRoadTool(null)}>
+            done
+          </button>
+        </div>
+      )}
+
       {/* dock drawer */}
       {dockTab && (
         <DockDrawer
           tab={dockTab}
           buildings={buildings}
+          roadCount={roadCount}
+          roadTool={roadTool}
           onClose={() => setDockTab(null)}
-          onPlace={(p) => {
-            setPlacing(p);
-            setDockTab(null);
-          }}
+          onPlace={startPlacing}
           onOpenAgent={(p) => {
             setOpenAgent(p);
             setDockTab(null);
           }}
+          onRoadTool={chooseRoadTool}
+          onClearRoads={clearRoads}
         />
       )}
 
