@@ -264,18 +264,21 @@ export function Game() {
       {/* bottom dock */}
       <div className="absolute inset-x-0 bottom-0 flex justify-center p-3">
         <div className="flex gap-1 rounded-2xl border border-white/15 bg-black/40 p-1.5 backdrop-blur-md">
-          {DOCK.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setDockTab(dockTab === d.id ? null : d.id)}
-              className={`flex w-[72px] flex-col items-center gap-1 rounded-xl px-2 py-2 transition ${
-                dockTab === d.id ? "bg-white/20" : "hover:bg-white/10"
-              }`}
-            >
-              <DockIcon id={d.id} fallback={d.icon} />
-              <span className="text-[10px] font-medium text-white/80">{d.label}</span>
-            </button>
-          ))}
+          {DOCK.map((d) => {
+            const active = dockTab === d.id || (d.id === "roads" && !!roadTool);
+            return (
+              <button
+                key={d.id}
+                onClick={() => setDockTab(dockTab === d.id ? null : d.id)}
+                className={`flex w-[72px] flex-col items-center gap-1 rounded-xl px-2 py-2 transition ${
+                  active ? "bg-white/20" : "hover:bg-white/10"
+                }`}
+              >
+                <DockIcon id={d.id} fallback={d.icon} />
+                <span className="text-[10px] font-medium text-white/80">{d.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
