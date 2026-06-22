@@ -334,7 +334,7 @@ export function Game() {
               Open <b>Buildings</b> and place the Town Hall, then add provider buildings — each one hires its branded AI agent.
             </p>
             <button
-              onClick={() => setDockModal("buildings")}
+              onClick={() => toggleTray("buildings")}
               className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
             >
               Open Buildings
