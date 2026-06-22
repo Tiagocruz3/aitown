@@ -317,21 +317,38 @@ export function GameCanvas({
 
     function onDown(e: MouseEvent) {
       const p = getPos(e);
+      const cam = camRef.current;
+      // Road tool: paint on press and start drag-painting (don't pan).
+      if (roadToolRef.current) {
+        const cell = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
+        if (cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID) {
+          cbRef.current.onPaintRoad(cell.col, cell.row, roadToolRef.current === "erase-road");
+        }
+        dragRef.current = { on: true, lx: p.x, ly: p.y, moved: true };
+        return;
+      }
       dragRef.current = { on: true, lx: p.x, ly: p.y, moved: false };
     }
     function onMove(e: MouseEvent) {
       const p = getPos(e);
       const cam = camRef.current;
       hoverRef.current = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
-      if (dragRef.current.on) {
-        const dx = p.x - dragRef.current.lx;
-        const dy = p.y - dragRef.current.ly;
-        if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true;
-        cam.x += dx;
-        cam.y += dy;
-        dragRef.current.lx = p.x;
-        dragRef.current.ly = p.y;
+      if (!dragRef.current.on) return;
+      // Road tool: paint along the drag instead of panning.
+      if (roadToolRef.current) {
+        const cell = hoverRef.current;
+        if (cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID) {
+          cbRef.current.onPaintRoad(cell.col, cell.row, roadToolRef.current === "erase-road");
+        }
+        return;
       }
+      const dx = p.x - dragRef.current.lx;
+      const dy = p.y - dragRef.current.ly;
+      if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true;
+      cam.x += dx;
+      cam.y += dy;
+      dragRef.current.lx = p.x;
+      dragRef.current.ly = p.y;
     }
     function onUp(e: MouseEvent) {
       const wasDrag = dragRef.current.moved;
