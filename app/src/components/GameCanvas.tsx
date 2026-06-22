@@ -474,7 +474,7 @@ export function GameCanvas({
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContext);
     };
-  }, [agents, buildingAt]);
+  }, [agents, buildingAt, buildingAtScreen, roads]);
 
   return <canvas ref={canvasRef} className="block h-full w-full cursor-grab active:cursor-grabbing" />;
 }
