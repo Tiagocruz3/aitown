@@ -420,9 +420,15 @@ export function GameCanvas({
       dragRef.current.ly = p.y;
     }
     function onUp(e: MouseEvent) {
+      // `on` is only set by the canvas mousedown handler, so a press that began
+      // on a UI overlay (the dock, panels, modals) never sets it. Ignore those
+      // — otherwise clicking the dock would pick/deselect a map tile underneath,
+      // deselecting the building and unmounting the button mid-click.
+      const startedOnCanvas = dragRef.current.on;
       const wasDrag = dragRef.current.moved;
       const wasRoad = !!roadToolRef.current;
       dragRef.current.on = false;
+      if (!startedOnCanvas) return;
       if (wasRoad) return; // road painting handled on down/move
       if (wasDrag) return;
       const p = getPos(e);
