@@ -5,8 +5,9 @@ import {
   type LiveAgent,
   type RoadTool,
 } from "./GameCanvas";
-import { BuildingModal, AgentModal, ContextMenu, BrandImg } from "./Modals";
-import { DockModal, TownHallModal } from "./DockModals";
+import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
+import { DockTray } from "./Trays";
+import { ContextMenu, BrandImg } from "./Modals";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
