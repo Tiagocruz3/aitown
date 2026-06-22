@@ -231,17 +231,21 @@ export function GameCanvas({
         }
       }
 
+      // Tile highlight only appears when something is selected to build/place —
+      // a provider/town-hall to drop, a building being moved, or a road tool.
+      // In plain navigation the grid stays clean (no hover highlight).
       const hov = hoverRef.current;
-      if (hov && hov.col >= 0 && hov.row >= 0 && hov.col < GRID && hov.row < GRID) {
+      const rt = roadToolRef.current;
+      const buildMode = placingActiveRef.current || !!movingRef.current || !!rt;
+      if (buildMode && hov && hov.col >= 0 && hov.row >= 0 && hov.col < GRID && hov.row < GRID) {
         const occupied = !!buildingAt(hov.col, hov.row);
-        const rt = roadToolRef.current;
-        let fill = "rgba(255,255,255,0.28)";
-        if (placingActiveRef.current) {
+        let fill: string;
+        if (placingActiveRef.current || movingRef.current) {
           fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(80,200,120,0.55)";
         } else if (rt === "road") {
           fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(120,160,255,0.6)";
-        } else if (rt === "erase-road") {
-          fill = "rgba(255,140,60,0.55)";
+        } else {
+          fill = "rgba(255,140,60,0.55)"; // erase-road
         }
         drawTile(hov.col, hov.row, cam, cw, ch, fill, "rgba(255,255,255,0.9)");
       }
@@ -509,7 +513,10 @@ export function GameCanvas({
     };
   }, [agents, buildingAt, buildingAtScreen, roads]);
 
-  return <canvas ref={canvasRef} className="block h-full w-full cursor-grab active:cursor-grabbing" />;
+  // Plain arrow pointer for navigation (no grab "hand"); a crosshair while
+  // actively placing / moving a building or painting roads.
+  const cursor = placingActive || movingId || roadTool ? "cursor-crosshair" : "cursor-default";
+  return <canvas ref={canvasRef} className={`block h-full w-full ${cursor}`} />;
 }
 
 function clamp(v: number, lo: number, hi: number) {
