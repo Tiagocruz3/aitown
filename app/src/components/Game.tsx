@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { GameCanvas, type PlacedBuilding, type LiveAgent } from "./GameCanvas";
+import { GameCanvas, type PlacedBuilding, type LiveAgent, type RoadTool } from "./GameCanvas";
 import { BuildingModal, AgentModal, ContextMenu } from "./Modals";
 import {
   PROVIDERS,
@@ -15,6 +15,8 @@ export function Game() {
   // Empty town to start: "no building, no agents".
   const [buildings, setBuildings] = useState<PlacedBuilding[]>([]);
   const [placing, setPlacing] = useState<ProviderId | null>(null);
+  const [roadTool, setRoadTool] = useState<RoadTool | null>(null);
+  const [roadCount, setRoadCount] = useState(0);
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openAgent, setOpenAgent] = useState<ProviderId | null>(null);
   const [dockTab, setDockTab] = useState<string | null>(null);
@@ -27,6 +29,32 @@ export function Game() {
   // Agents live in a ref so the rAF loop mutates them without React re-renders.
   // RULE: exactly one agent per building; agent id === building id.
   const agents = useRef<LiveAgent[]>([]);
+  // Roads live in a ref (a Set of "col,row") for the same reason.
+  const roads = useRef<Set<string>>(new Set());
+
+  function persist(nextBuildings: PlacedBuilding[]) {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ buildings: nextBuildings, roads: Array.from(roads.current) }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function paintRoad(col: number, row: number, erase: boolean) {
+    const key = `${col},${row}`;
+    // never lay road under a building
+    if (!erase && buildings.some((b) => b.col === col && b.row === row)) return;
+    const before = roads.current.size;
+    if (erase) roads.current.delete(key);
+    else roads.current.add(key);
+    if (roads.current.size !== before) {
+      setRoadCount(roads.current.size);
+      persist(buildings);
+    }
+  }
 
   function spawnAgent(b: PlacedBuilding) {
     const def = PROVIDERS[b.provider];
