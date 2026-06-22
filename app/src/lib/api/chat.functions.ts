@@ -88,7 +88,9 @@ export const chat = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = (data.apiKey || envKey(data.provider)).trim();
     if (!key) return { text: "", error: "No API key configured for this provider." };
-    const base = data.apiBase.replace(/\/$/, "");
+    const base = (data.apiBase || "").replace(/\/$/, "");
+    const messages = Array.isArray(data.messages) ? data.messages : [];
+    const system = data.system || "";
     if (!base || !data.model) return { text: "", error: "Missing endpoint or model." };
 
     try {
@@ -103,8 +105,8 @@ export const chat = createServerFn({ method: "POST" })
           body: JSON.stringify({
             model: data.model,
             max_tokens: 1024,
-            system: data.system || undefined,
-            messages: data.messages,
+            system: system || undefined,
+            messages,
           }),
         });
         const json = (await res.json()) as { content?: { text?: string }[]; error?: { message?: string } };
@@ -118,7 +120,7 @@ export const chat = createServerFn({ method: "POST" })
         headers["HTTP-Referer"] = "https://agentvillage.os";
         headers["X-Title"] = "AgentVillage OS";
       }
-      const msgs = data.system ? [{ role: "system", content: data.system }, ...data.messages] : data.messages;
+      const msgs = system ? [{ role: "system", content: system }, ...messages] : messages;
       const res = await fetch(`${base}/chat/completions`, {
         method: "POST",
         headers,
