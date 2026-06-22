@@ -397,7 +397,7 @@ export function BrandImg({ src, alt, className }: { src: string; alt: string; cl
   return <img src={src} alt={alt} className={className} onError={() => setOk(false)} />;
 }
 
-function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+export function Backdrop({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" onClick={onClose}>
       {children}
