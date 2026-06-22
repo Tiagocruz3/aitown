@@ -238,7 +238,7 @@ export function GameCanvas({
         const occupied = !!buildingAt(hov.col, hov.row);
         const rt = roadToolRef.current;
         let fill = "rgba(255,255,255,0.28)";
-        if (placingRef.current) {
+        if (placingActiveRef.current) {
           fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(80,200,120,0.55)";
         } else if (rt === "road") {
           fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(120,160,255,0.6)";
