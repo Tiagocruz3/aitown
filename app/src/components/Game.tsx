@@ -443,7 +443,56 @@ function DockDrawer({
           </>
         )}
 
-        {tab !== "buildings" && tab !== "chat-agents" && (
+        {tab === "roads" && (
+          <>
+            <p className="mb-3 text-xs text-white/45">
+              Paint roads tile-by-tile, or click and drag to draw a path. Roads can't be placed under buildings. Your agents stroll the town along them.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => onRoadTool("road")}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                  roadTool === "road"
+                    ? "border-white/40 bg-white/15 text-white"
+                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-lg">🛣️</span> Paint road
+              </button>
+              <button
+                onClick={() => onRoadTool("erase-road")}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                  roadTool === "erase-road"
+                    ? "border-white/40 bg-white/15 text-white"
+                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-lg">🧽</span> Erase road
+              </button>
+              <button
+                onClick={() => onRoadTool(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
+              >
+                Stop
+              </button>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="text-xs text-white/45">{roadCount} tiles</span>
+                <button
+                  onClick={onClearRoads}
+                  disabled={roadCount === 0}
+                  className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:opacity-40"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <p className="mt-3 text-[11px] text-white/35">
+              Tip: pick a tool here, then the drawer closes out of the way — paint directly on the map. Re-open Roads to switch or stop.
+            </p>
+          </>
+        )}
+
+        {tab !== "buildings" && tab !== "chat-agents" && tab !== "roads" && (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <div className="text-3xl">✨</div>
             <p className="text-sm font-medium capitalize text-white/75">{DOCK_TITLE[tab] ?? tab}</p>
