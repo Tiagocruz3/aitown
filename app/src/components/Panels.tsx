@@ -412,9 +412,9 @@ export function TownHallPanel({
               const p = PROVIDERS[a.provider];
               return (
                 <button key={a.id} onClick={() => onOpenAgent(a.id)} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2.5 text-left hover:bg-white/10">
-                  <BrandImg src={p.agentArt} alt={p.agent.name} className="h-9 w-9 object-contain" />
+                  <BrandImg src={p.agentArt} alt={a.name} className="h-9 w-9 object-contain" />
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-white">{p.agent.name}</div>
+                    <div className="text-sm font-semibold text-white">{a.name}</div>
                     <div className="text-[11px] text-white/45">{p.agent.title}</div>
                   </div>
                   <span className="text-xs text-white/40">chat →</span>
