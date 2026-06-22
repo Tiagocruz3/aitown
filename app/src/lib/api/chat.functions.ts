@@ -1,10 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import process from "node:process";
 
 // Server-side chat proxy for AgentVillage OS provider agents.
 // Keeps the user's API key on the server boundary and normalizes the
 // request/response shape across OpenAI-compatible and Anthropic APIs.
+
+// Safe env read — works in Node and in the Cloudflare Workers runtime,
+// where a bare `process` reference can throw.
+function readEnv(name: string): string {
+  try {
+    const g = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
+    return g.process?.env?.[name] ?? "";
+  } catch {
+    return "";
+  }
+}
 
 const ChatInput = z.object({
   provider: z.enum(["openai", "anthropic", "grok", "openrouter"]),
