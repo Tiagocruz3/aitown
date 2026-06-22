@@ -185,6 +185,42 @@ export function BuildingPanel({
           <span className="font-medium text-white/85">{connected ? "Key set — live API calls enabled" : "No key — mock replies"}</span>
         </div>
 
+        {/* Agent identity: custom name + system prompt */}
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3" style={{ boxShadow: `inset 0 -3px 0 ${def.color}` }}>
+          <div className="flex items-center gap-2">
+            <BrandImg src={def.agentArt} alt="" className="h-9 w-9 object-contain" />
+            <div className="text-sm font-bold text-white">Agent identity</div>
+          </div>
+          <Field label="Agent name" hint="shown on the map & in chat">
+            <input
+              value={cfg.agentName}
+              onChange={(e) => setCfg({ ...cfg, agentName: e.target.value })}
+              placeholder={def.agent.name}
+              spellCheck={false}
+              maxLength={28}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25"
+            />
+          </Field>
+          <Field label="System prompt" hint={cfg.systemPrompt.trim() ? "custom" : "using default personality"}>
+            <textarea
+              value={cfg.systemPrompt}
+              onChange={(e) => setCfg({ ...cfg, systemPrompt: e.target.value })}
+              placeholder={`e.g. You are ${cfg.agentName || def.agent.name}, a ${def.agent.title.toLowerCase()} who… (leave blank to use the built-in personality)`}
+              rows={4}
+              spellCheck={false}
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-white outline-none placeholder:text-white/30 focus:border-white/25"
+            />
+          </Field>
+          {cfg.systemPrompt.trim() && (
+            <button
+              onClick={() => setCfg({ ...cfg, systemPrompt: "" })}
+              className="text-[11px] font-semibold text-white/50 underline hover:text-white/80"
+            >
+              Reset to default personality
+            </button>
+          )}
+        </div>
+
         <Field label="API Key" hint={`at ${hostOf(def.docsUrl)}`}>
           <div className="flex gap-2">
             <input
