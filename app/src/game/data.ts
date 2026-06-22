@@ -191,7 +191,7 @@ export interface DockCategory {
 }
 
 export const GRID_HELP =
-  "Drag to pan · Scroll to zoom · Place a provider building to spawn its agent · Open Roads to paint paths · Click an agent to chat · Click a building for settings · Right-click a building for options";
+  "Drag to pan · Scroll to zoom · Click a building to configure / move / remove it · Open Roads to paint paths · Click an agent to chat · Right-click a building for quick options";
 
 // Road tile colors (flat, drawn under buildings & agents).
 export const ROAD = {
