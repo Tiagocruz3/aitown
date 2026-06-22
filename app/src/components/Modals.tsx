@@ -192,23 +192,20 @@ export function AgentModal({
 
     if (live) {
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const data = await chat({
+          data: {
             provider,
             apiKey: cfg.apiKey,
             apiBase: cfg.apiBase,
             model: cfg.model,
             messages: next.map((m) => ({
-              role: m.from === "user" ? "user" : "assistant",
+              role: m.from === "user" ? ("user" as const) : ("assistant" as const),
               content: m.text,
             })),
             system: `You are ${def.agent.name}, the ${def.agent.title} in AgentVillage OS. Personality: ${def.agent.personality} Be ${def.agent.voice}. Keep replies concise.`,
-          }),
+          },
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || "request failed");
+        if (data.error) throw new Error(data.error);
         setMsgs((m) => [...m, { from: "agent", text: data.text || "(no response)" }]);
       } catch (err) {
         setMsgs((m) => [
