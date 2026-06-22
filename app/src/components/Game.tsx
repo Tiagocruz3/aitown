@@ -464,35 +464,29 @@ export function Game() {
         />
       )}
 
-      {/* ===== Building / agent / town-hall modals ===== */}
+      {/* ===== Right-side panels (building settings / town hall / agent chat) ===== */}
       {openBuilding && (
-        <BuildingModal
+        <BuildingPanel
           building={openBuilding}
           onClose={() => setOpenBuilding(null)}
           onToast={showToast}
           onMove={() => startMoving(openBuilding)}
           onDelete={() => deleteBuilding(openBuilding)}
-          onChat={() => {
-            openAgentByProvider(openBuilding.provider);
-            setOpenBuilding(null);
-          }}
+          onChat={() => openAgentByProvider(openBuilding.provider)}
         />
       )}
       {openTownHall && (
-        <TownHallModal
+        <TownHallPanel
           buildings={buildings}
           agents={liveAgents}
           onClose={() => setOpenTownHall(null)}
-          onOpenAgent={(id) => {
-            setOpenTownHall(null);
-            openAgentById(id);
-          }}
+          onOpenAgent={(id) => openAgentById(id)}
           onMove={() => startMoving(openTownHall)}
           onDelete={() => deleteBuilding(openTownHall)}
         />
       )}
       {openAgentProvider && (
-        <AgentModal provider={openAgentProvider} onClose={() => setOpenAgentId(null)} />
+        <AgentPanel provider={openAgentProvider} onClose={() => setOpenAgentId(null)} />
       )}
 
       {ctx && (
