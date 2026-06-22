@@ -1,0 +1,82 @@
+{
+  "$metadata": {
+    "name": "space",
+    "modes": [
+      "global"
+    ]
+  },
+  "space": {
+    "0": {
+      "$type": "dimension",
+      "$value": 0
+    },
+    "100": {
+      "$type": "dimension",
+      "$value": 4
+    },
+    "150": {
+      "$type": "dimension",
+      "$value": 6
+    },
+    "200": {
+      "$type": "dimension",
+      "$value": 8
+    },
+    "250": {
+      "$type": "dimension",
+      "$value": 10
+    },
+    "300": {
+      "$type": "dimension",
+      "$value": 12
+    },
+    "400": {
+      "$type": "dimension",
+      "$value": 16
+    },
+    "500": {
+      "$type": "dimension",
+      "$value": 20
+    },
+    "600": {
+      "$type": "dimension",
+      "$value": 24
+    },
+    "700": {
+      "$type": "dimension",
+      "$value": 28
+    },
+    "800": {
+      "$type": "dimension",
+      "$value": 32
+    },
+    "1000": {
+      "$type": "dimension",
+      "$value": 40
+    },
+    "1200": {
+      "$type": "dimension",
+      "$value": 48
+    },
+    "1400": {
+      "$type": "dimension",
+      "$value": 56
+    },
+    "1600": {
+      "$type": "dimension",
+      "$value": 64
+    },
+    "2000": {
+      "$type": "dimension",
+      "$value": 80
+    },
+    "2400": {
+      "$type": "dimension",
+      "$value": 96
+    },
+    "050": {
+      "$type": "dimension",
+      "$value": 2
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$metadata": {
+    "name": "motion",
+    "modes": [
+      "global"
+    ]
+  },
+  "duration": {
+    "instant": {
+      "$type": "duration",
+      "$value": 0
+    },
+    "fast": {
+      "$type": "duration",
+      "$value": 100
+    },
+    "normal": {
+      "$type": "duration",
+      "$value": 200
+    },
+    "slow": {
+      "$type": "duration",
+      "$value": 300
+    },
+    "slower": {
+      "$type": "duration",
+      "$value": 500
+    }
+  },
+  "easing": {
+    "in": {
+      "$type": "cubicBezier",
+      "$value": "cubic-bezier(0.4, 0, 1, 1)"
+    },
+    "out": {
+      "$type": "cubicBezier",
+      "$value": "cubic-bezier(0, 0, 0.2, 1)"
+    },
+    "in-out": {
+      "$type": "cubicBezier",
+      "$value": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    "linear": {
+      "$type": "cubicBezier",
+      "$value": "linear"
+    }
+  }
+}

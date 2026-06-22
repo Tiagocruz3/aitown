@@ -1,0 +1,18 @@
+{
+  "sourceRepository": "git@github.com:higgsfield-ai/fnf-web.git",
+  "fnfRef": "37a813632c6eeb0e5e27b46ba4376c8d8400112c",
+  "fnfCommit": "37a813632c6eeb0e5e27b46ba4376c8d8400112c",
+  "quantaRef": "37a813632c6eeb0e5e27b46ba4376c8d8400112c",
+  "quantaCommit": "37a813632c6eeb0e5e27b46ba4376c8d8400112c",
+  "bundleName": "manual-package-sync-37a813632c6e.zip",
+  "bundleSha256": "not-generated-manual-sync",
+  "syncedBy": "dasiktazik@gmail.com",
+  "syncMode": "manual-package-copy",
+  "generatedAt": "2026-06-19T20:42:28Z",
+  "managedPackages": [
+    "@higgsfield/fnf",
+    "@higgsfield/fnf-react",
+    "@higgsfield/quanta"
+  ],
+  "templateLayout": "app-project"
+}

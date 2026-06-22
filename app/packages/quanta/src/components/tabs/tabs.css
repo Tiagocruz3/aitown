@@ -1,0 +1,494 @@
+/**
+ * Tabs presentation utilities, matched to the Figma Tabs and Segmented Control
+ * nodes around 1747:351 / 1747:350.
+ */
+
+@source "./tabs.tsx";
+
+@utility q-tabs {
+  --q-tabs-accent: var(--_c, var(--hf-color-brand-primary));
+  --q-tabs-focus-ring: var(--hf-color-brand-alpha-20);
+  --q-tabs-indicator-bg: var(--hf-color-border-inverse);
+  --q-tabs-indicator-fg: var(--hf-color-text-primary);
+  --q-tabs-indicator-icon: var(--hf-color-icon-primary);
+  --q-tabs-segment-radius: var(--hf-space-250);
+  --q-tabs-selected-radius: var(--hf-space-200);
+  --q-tabs-tab-fg: var(--hf-color-text-tertiary);
+  --q-tabs-tab-hover-bg: transparent;
+  --q-tabs-tab-hover-fg: var(--hf-color-brand-primary);
+  --q-tabs-tab-icon: currentColor;
+
+  display: block;
+  width: 100%;
+}
+
+@utility q-tabs-list {
+  align-items: center;
+  box-sizing: border-box;
+  display: inline-flex;
+  isolation: isolate;
+  max-width: 100%;
+  position: relative;
+}
+
+@utility q-tabs-tab {
+  align-items: center;
+  appearance: none;
+  background-color: transparent;
+  border: var(--hf-border-width-none) solid transparent;
+  box-sizing: border-box;
+  color: var(--q-tabs-tab-fg);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  outline: none;
+  padding: var(--hf-space-0);
+  position: relative;
+  transition-duration: 160ms;
+  transition-property: background-color, border-color, box-shadow, color, opacity;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 1;
+
+  & svg {
+    color: var(--q-tabs-tab-icon);
+    flex-shrink: 0;
+    height: var(--q-tabs-icon-size, var(--hf-space-400));
+    width: var(--q-tabs-icon-size, var(--hf-space-400));
+  }
+}
+
+@utility q-tabs-tab-content {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--q-tabs-content-gap, var(--hf-space-150));
+  justify-content: center;
+  min-width: var(--hf-space-0);
+  overflow: hidden;
+  padding: var(--hf-space-0) var(--q-tabs-label-padding-x, var(--hf-space-150));
+  position: relative;
+  text-overflow: ellipsis;
+  z-index: 1;
+}
+
+@utility q-tabs-tab-icon {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+@utility q-tabs-tab-label {
+  min-width: var(--hf-space-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Width-locking label: a zero-height ::after carries a semibold copy of the
+ * text, forcing the box to the widest (bold) footprint. The visible text flows
+ * above it and can switch weight on select without changing width — so the
+ * indicator and neighbouring tabs never wobble. */
+@utility q-tabs-tab-text {
+  display: inline-flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.q-tabs-tab-text::after {
+  content: attr(data-text);
+  font-weight: var(--hf-type-weight-semi-bold);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+@utility q-tabs-tab-secondary {
+  color: var(--q-tabs-tab-secondary-fg, var(--hf-color-text-tertiary));
+  min-width: var(--hf-space-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@utility q-tabs-tab-icon-only {
+  --q-tabs-content-gap: var(--hf-space-0);
+  --q-tabs-label-padding-x: var(--hf-space-0);
+}
+
+@utility q-tabs-indicator {
+  bottom: auto;
+  box-sizing: border-box;
+  left: var(--active-tab-left);
+  pointer-events: none;
+  position: absolute;
+  top: var(--active-tab-top);
+  transition-duration: 180ms;
+  transition-property: background, background-color, border-color, border-radius, box-shadow, height, left, top, width;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  z-index: 0;
+}
+
+@utility q-tabs-panel {
+  animation: q-tabs-panel-in 160ms cubic-bezier(0.2, 0, 0, 1);
+  color: var(--hf-color-text-primary);
+  outline: none;
+  padding-top: var(--hf-space-400);
+}
+
+@utility q-tabs-list-fill {
+  width: 100%;
+
+  & .q-tabs-tab {
+    flex: 1 1 var(--hf-space-0);
+    /* Allow shrinking below intrinsic label width so every tab gets an equal
+     * share (nowrap labels otherwise floor each tab at its text width). */
+    min-width: var(--hf-space-0);
+  }
+}
+
+/* When the list is full-width, expand the root too — segmented/soft default to
+ * inline-block/width:auto, so without this the 100% list has nothing to fill. */
+.q-tabs:has(.q-tabs-list-fill) {
+  display: block;
+  width: 100%;
+}
+
+.q-tabs-underline {
+  --q-tabs-indicator-bg: var(--hf-color-border-inverse);
+  --q-tabs-tab-fg: var(--hf-color-text-tertiary);
+  --q-tabs-tab-hover-bg: transparent;
+  --q-tabs-tab-hover-fg: var(--hf-color-brand-primary);
+}
+
+.q-tabs-underline.q-tabs-tone-accent {
+  --q-tabs-indicator-bg: var(--q-tabs-accent);
+  --q-tabs-indicator-fg: var(--q-tabs-accent);
+}
+
+.q-tabs-underline .q-tabs-list {
+  border-bottom: var(--hf-border-width-thin) solid var(--hf-color-border-subtle);
+  gap: var(--hf-space-300);
+  height: calc(var(--hf-space-1000) + var(--hf-space-300));
+  overflow: clip;
+  padding-inline: var(--hf-space-400);
+}
+
+.q-tabs-underline .q-tabs-tab {
+  min-height: calc(var(--hf-space-1000) + var(--hf-space-300));
+  padding-block: var(--hf-space-400);
+  @apply text-q-body-sm-medium;
+}
+
+.q-tabs-underline .q-tabs-tab[data-active] {
+  color: var(--q-tabs-indicator-fg);
+  @apply text-q-body-sm-semi-bold;
+}
+
+.q-tabs-underline .q-tabs-tab:not([data-active]):not([data-disabled]):hover {
+  background-color: var(--q-tabs-tab-hover-bg);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-underline .q-tabs-tab.q-tabs-story-hover:not([data-active]):not([data-disabled]) {
+  background-color: var(--q-tabs-tab-hover-bg);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-underline .q-tabs-indicator {
+  background-color: var(--q-tabs-indicator-bg);
+  bottom: var(--hf-space-0);
+  height: var(--hf-border-width-thick);
+  left: var(--active-tab-left);
+  top: auto;
+  width: var(--active-tab-width);
+  z-index: 2;
+}
+
+.q-tabs-pill {
+  --q-tabs-indicator-bg: var(--hf-color-button-primary);
+  --q-tabs-indicator-fg: var(--hf-color-text-inverse);
+  --q-tabs-tab-fg: var(--hf-color-text-secondary);
+  --q-tabs-tab-hover-bg: transparent;
+  --q-tabs-tab-hover-fg: var(--hf-color-text-primary);
+}
+
+.q-tabs-pill .q-tabs-list {
+  border-radius: var(--hf-space-2400);
+  gap: var(--hf-space-050);
+  overflow: clip;
+  padding: var(--hf-space-100);
+}
+
+.q-tabs-pill .q-tabs-tab {
+  border-radius: var(--hf-space-2400);
+  min-height: var(--hf-space-800);
+  padding: var(--hf-space-100) var(--hf-space-200);
+  @apply text-q-caption-sm-medium;
+}
+
+.q-tabs-pill .q-tabs-tab[data-active] {
+  color: var(--q-tabs-indicator-fg);
+  @apply text-q-label-xs-semi-bold;
+}
+
+.q-tabs-pill .q-tabs-tab:not([data-active]):not([data-disabled]):hover {
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-pill .q-tabs-indicator {
+  background-color: var(--q-tabs-indicator-bg);
+  border-radius: var(--hf-space-2400);
+  height: var(--active-tab-height);
+  width: var(--active-tab-width);
+}
+
+.q-tabs-segmented {
+  --q-tabs-icon-size: var(--hf-space-400);
+  --q-tabs-indicator-bg: var(--hf-color-background-glass);
+  --q-tabs-indicator-border: var(--hf-color-border-subtle);
+  --q-tabs-indicator-fg: var(--hf-color-text-primary);
+  --q-tabs-indicator-icon: var(--hf-color-icon-primary);
+  --q-tabs-tab-fg: var(--hf-color-text-secondary);
+  --q-tabs-tab-hover-bg: var(--hf-color-overlay-hover);
+  --q-tabs-tab-hover-fg: var(--hf-color-text-primary);
+  --q-tabs-tab-icon: var(--hf-color-icon-secondary);
+  --q-tabs-track-bg: var(--hf-color-overlay-hover);
+  --q-tabs-track-radius: var(--hf-space-300);
+
+  display: inline-block;
+  width: auto;
+}
+
+.q-tabs-segmented.q-tabs-shape-pill {
+  --q-tabs-segment-radius: var(--hf-space-2400);
+  --q-tabs-selected-radius: var(--hf-space-2400);
+  --q-tabs-track-radius: var(--hf-space-2400);
+}
+
+.q-tabs-segmented.q-tabs-shape-icon {
+  --q-tabs-icon-size: var(--hf-space-600);
+}
+
+.q-tabs-segmented.q-tabs-tone-solid {
+  --q-tabs-indicator-bg: var(--hf-color-button-primary);
+  --q-tabs-indicator-fg: var(--hf-color-text-inverse);
+  --q-tabs-indicator-icon: var(--hf-color-icon-inverse);
+}
+
+.q-tabs-segmented.q-tabs-tone-brand-soft {
+  --q-tabs-indicator-bg: var(--hf-color-brand-alpha-15);
+  --q-tabs-indicator-fg: var(--hf-color-brand-primary);
+  --q-tabs-indicator-icon: var(--hf-color-icon-accent);
+}
+
+.q-tabs-segmented.q-tabs-tone-brand {
+  --q-tabs-indicator-bg: var(--hf-color-brand-primary);
+  --q-tabs-indicator-fg: var(--hf-color-text-inverse);
+  --q-tabs-indicator-icon: var(--hf-color-icon-inverse);
+}
+
+.q-tabs-segmented .q-tabs-list {
+  align-items: center;
+  backdrop-filter: blur(var(--hf-space-600)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--hf-space-600)) saturate(180%);
+  background-color: var(--q-tabs-track-bg);
+  border: var(--hf-border-width-thin) solid var(--hf-color-border-subtle);
+  border-radius: var(--q-tabs-track-radius);
+  box-shadow:
+    0 var(--hf-space-050) var(--hf-space-100) var(--hf-space-0) var(--hf-color-shadow-md),
+    inset 0 var(--hf-space-050) calc(var(--hf-space-100) - var(--hf-border-width-thin)) var(--hf-space-0) var(--hf-color-transparent-light-05);
+  gap: var(--hf-space-200);
+  height: calc(var(--hf-space-800) + var(--hf-space-200));
+  overflow: clip;
+  padding: var(--hf-space-100);
+}
+
+.q-tabs-segmented .q-tabs-tab {
+  border-radius: var(--q-tabs-segment-radius);
+  min-height: var(--hf-space-800);
+  padding: var(--hf-space-100) var(--hf-space-200);
+  @apply text-q-caption-sm-medium;
+}
+
+.q-tabs-segmented .q-tabs-tab[data-active] {
+  color: var(--q-tabs-indicator-fg);
+  @apply text-q-label-xs-semi-bold;
+}
+
+.q-tabs-segmented .q-tabs-tab[data-active] svg {
+  color: var(--q-tabs-indicator-icon);
+}
+
+.q-tabs-segmented .q-tabs-tab:not([data-active]):not([data-disabled]):hover {
+  background-color: var(--q-tabs-tab-hover-bg);
+  border-radius: var(--q-tabs-selected-radius);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-segmented .q-tabs-tab:not([data-active]):not([data-disabled]):hover svg {
+  color: var(--hf-color-icon-primary);
+}
+
+.q-tabs-segmented .q-tabs-tab.q-tabs-story-hover:not([data-active]):not([data-disabled]) {
+  background-color: var(--q-tabs-tab-hover-bg);
+  border-radius: var(--q-tabs-selected-radius);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-segmented .q-tabs-tab.q-tabs-story-hover:not([data-active]):not([data-disabled]) svg {
+  color: var(--hf-color-icon-primary);
+}
+
+.q-tabs-segmented .q-tabs-indicator {
+  background-color: var(--q-tabs-indicator-bg);
+  border: var(--hf-border-width-thin) solid transparent;
+  border-radius: var(--q-tabs-selected-radius);
+  height: var(--active-tab-height);
+  width: var(--active-tab-width);
+}
+
+/* Overlap fix: the moment a (possibly hovered) tab becomes active, snap its
+ * own hover background off with no transition so it can't linger UNDER the
+ * sliding glass pill. The pill is the sole selected surface; the tab keeps
+ * smooth colour/shadow transitions for everything else. (Segmented only —
+ * the soft variant uses a per-tab background AS its selection, no pill.) */
+.q-tabs-segmented .q-tabs-tab[data-active] {
+  background-color: transparent;
+  transition-property: border-color, box-shadow, color, opacity;
+}
+
+.q-tabs-segmented.q-tabs-tone-glass .q-tabs-indicator {
+  /* Figma "Glass" effect: BACKGROUND_BLUR 24px + drop-shadow 0 2px 4px -0.5px
+   * #0000001F + inner-shadow 0 2px 3px #FFFFFF0D, over background/glass. The
+   * gradient sheen gives the frosted-light highlight that reads as glassy. */
+  backdrop-filter: blur(var(--hf-space-600)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--hf-space-600)) saturate(180%);
+  background:
+    linear-gradient(
+      150deg,
+      var(--hf-color-transparent-light-10) 0%,
+      var(--hf-color-transparent-light-05) 45%,
+      var(--hf-color-transparent-light-10) 100%
+    ),
+    var(--q-tabs-indicator-bg);
+  border-color: var(--q-tabs-indicator-border);
+  box-shadow:
+    0 var(--hf-space-050) var(--hf-space-100) calc(var(--hf-border-width-thin) * -0.5) var(--hf-color-transparent-dark-10),
+    inset 0 var(--hf-space-050) var(--hf-space-150) var(--hf-space-0) var(--hf-color-transparent-light-05);
+}
+
+.q-tabs-shape-icon .q-tabs-list {
+  height: calc(var(--hf-space-800) + var(--hf-space-300));
+}
+
+.q-tabs-shape-icon .q-tabs-tab {
+  min-height: calc(var(--hf-space-600) + var(--hf-space-300));
+  min-width: calc(var(--hf-space-600) + var(--hf-space-300));
+  padding: var(--hf-space-150);
+}
+
+.q-tabs-shape-icon .q-tabs-tab-content {
+  --q-tabs-content-gap: var(--hf-space-0);
+  --q-tabs-label-padding-x: var(--hf-space-0);
+}
+
+/* ── Soft pill tabs (Figma node 1637:6461) ──────────────────────────────────
+ * A flat row of 32px tab buttons; the selected tab sits under a subtle white-5%
+ * pill (transparent/dark/05) that SLIDES between tabs via the Base UI indicator.
+ * Selected: text/primary + label-xs-semibold. Unselected: text/secondary +
+ * label-xs-medium. Tab box: radius 10px, pl8/pr12/py4, 8px content gap,
+ * 16px icons. */
+.q-tabs-soft {
+  /* Figma "transparent/dark/05" is theme-adaptive (white-5% in dark,
+   * black-5% in light); the quanta semantic that mirrors it is overlay-hover.
+   * The raw --hf-color-transparent-dark-05 primitive is locked to black and
+   * is NOT theme-adaptive, so it must not be used here. */
+  --q-tabs-selected-bg: var(--hf-color-overlay-hover);
+  --q-tabs-selected-radius: var(--hf-space-250);
+  --q-tabs-tab-fg: var(--hf-color-text-secondary);
+  --q-tabs-tab-icon: var(--hf-color-icon-secondary);
+  --q-tabs-tab-hover-bg: var(--hf-color-overlay-hover);
+  --q-tabs-tab-hover-fg: var(--hf-color-text-primary);
+  --q-tabs-tab-selected-fg: var(--hf-color-text-primary);
+  --q-tabs-tab-selected-icon: var(--hf-color-icon-primary);
+  --q-tabs-icon-size: var(--hf-space-400);
+
+  display: inline-block;
+  width: auto;
+}
+
+.q-tabs-soft .q-tabs-list {
+  gap: var(--hf-space-050);
+}
+
+/* The sliding selection pill (white-5% surface that animates between tabs). */
+.q-tabs-soft .q-tabs-indicator {
+  background-color: var(--q-tabs-selected-bg);
+  border-radius: var(--q-tabs-selected-radius);
+  height: var(--active-tab-height);
+  width: var(--active-tab-width);
+}
+
+.q-tabs-soft .q-tabs-tab {
+  border-radius: var(--hf-space-250);
+  gap: var(--hf-space-200);
+  min-height: var(--hf-space-800);
+  padding: var(--hf-space-100) var(--hf-space-300) var(--hf-space-100) var(--hf-space-200);
+  @apply text-q-label-xs-medium;
+}
+
+.q-tabs-soft .q-tabs-tab-content {
+  --q-tabs-content-gap: var(--hf-space-200);
+  --q-tabs-label-padding-x: var(--hf-space-0);
+  overflow: visible;
+}
+
+.q-tabs-soft .q-tabs-tab[data-active] {
+  /* The pill provides the selected surface; keep the tab transparent and snap
+   * (no bg transition) so a prior hover can't linger under the sliding pill. */
+  background-color: transparent;
+  color: var(--q-tabs-tab-selected-fg);
+  transition-property: border-color, box-shadow, color, opacity;
+  @apply text-q-label-xs-semi-bold;
+}
+
+.q-tabs-soft .q-tabs-tab[data-active] svg {
+  color: var(--q-tabs-tab-selected-icon);
+}
+
+.q-tabs-soft .q-tabs-tab:not([data-active]):not([data-disabled]):hover {
+  background-color: var(--q-tabs-tab-hover-bg);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-soft .q-tabs-tab:not([data-active]):not([data-disabled]):hover svg {
+  color: var(--hf-color-icon-primary);
+}
+
+.q-tabs-soft .q-tabs-tab.q-tabs-story-hover:not([data-active]):not([data-disabled]) {
+  background-color: var(--q-tabs-tab-hover-bg);
+  color: var(--q-tabs-tab-hover-fg);
+}
+
+.q-tabs-tab:focus-visible {
+  box-shadow: 0 0 0 var(--hf-border-width-thick) var(--q-tabs-focus-ring);
+}
+
+.q-tabs-tab[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@keyframes q-tabs-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hf-space-050));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(var(--hf-space-0));
+  }
+}

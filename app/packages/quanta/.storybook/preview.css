@@ -1,0 +1,82 @@
+/**
+ * Storybook preview CSS — what loads inside the story iframe.
+ *
+ * Mirrors a consumer setup: Tailwind v4 entrypoint + quanta tokens, plus the
+ * v4 `dark:` variant wired to our `data-theme$="-dark"` attribute (so
+ * `dark:bg-foo` works in stories the same way it would in app code).
+ */
+
+@import 'tailwindcss';
+@import '@higgsfield/quanta/tailwind.css';
+
+/* No `--spacing` restore needed: quanta no longer resets Tailwind's default
+ * spacing base (it emits only additive `--spacing-q-*` named keys), so the
+ * default numeric scale (`gap-4`, `size-14`, `px-3`) is available here exactly
+ * as in the host app. */
+
+@custom-variant dark (&:where([data-theme$="-dark"], [data-theme$="-dark"] *));
+
+/**
+ * Anti-FOUC: paint the iframe canvas with theme colors before React mounts.
+ * Pairs with preview-head.html which sets `data-theme="default-dark"` on
+ * <html>. Without this, the body shows the browser's white default until
+ * the story wrapper renders.
+ */
+html,
+body {
+  /* Lighter dark canvas (Figma-like grey) so dark components read against it,
+   * rather than the near-black `background-primary`. */
+  background-color: var(--hf-color-background-tertiary);
+  color: var(--hf-color-text-primary);
+}
+
+body {
+  --hf-type-family-primary: 'Inter', system-ui, sans-serif;
+  --hf-type-family-secondary: 'Inter', system-ui, sans-serif;
+  --hf-type-family-grotesk: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/**
+ * Stories generate utility class names at runtime via template literals,
+ * which Tailwind v4's content scanner can't statically detect. `@source
+ * inline()` with brace-expansion force-emits the full cross-product so
+ * every token appears in the Storybook canvas, even if no .tsx file has
+ * the literal anywhere.
+ *
+ * Lists are kept in sync with codegen output — if upstream taxonomy
+ * changes, regenerate by inspecting `src/css/tailwind/typography.css`
+ * and similar.
+ */
+@source inline("text-q-{display,headline,title,label}-{lg,md,sm}-{black,bold,medium,semi-bold}");
+@source inline("text-q-{body,mono}-{lg,md,sm}-{black,medium,regular,semi-bold}");
+@source inline("text-q-caption-sm-{black,medium,regular,semi-bold}");
+
+@source inline("{bg,text,border}-q-background-{primary,secondary,tertiary,inverse,glass}");
+@source inline("{bg,text,border}-q-text-{primary,secondary,tertiary,inverse}");
+@source inline("{bg,text,border}-q-border-{default,subtle,strong,focus,error,warning,success,inverse}");
+@source inline("{bg,text,border}-q-state-{error,success,warning}-{bg,fg}");
+@source inline("{bg,text,border}-q-brand-primary");
+
+@source inline("{bg,text}-q-cool-{100,150,200,250,300,350,400}");
+
+@source inline("border-q-{thin,medium,thick}");
+@source inline("border-q-{l,r,t,b}-{thin,medium,thick}");
+@source inline("border-q-border-{default,subtle,strong,focus}");
+
+@source inline("z-q-{base,dropdown,sticky,overlay,modal,popover,toast,tooltip}");
+
+@source inline("q-{tablet,desktop,wide}:bg-q-{cool-200,brand-primary}");
+@source inline("q-{tablet,desktop,wide}:hidden");
+@source inline("q-{tablet,desktop,wide}:block");
+
+/* Slot system — stories compose these via color loops (template literals), which
+ * Tailwind can't statically scan; force-emit the q-slot-* surface from §5.2. */
+@source inline("q-slot-bg{,-fg,-10,-20}");
+@source inline("q-slot-text{,-fg}");
+@source inline("q-slot-ring{,-40}");
+@source inline("q-slot-border");
+@source inline("q-slot-{rounded,duration,ease}");
+/* State variants of slot utilities used by interactive components. */
+@source inline("data-{checked,pressed,selected,highlighted,active}:q-slot-bg{,-10,-20}");
+@source inline("data-{checked,pressed,selected,highlighted,active}:q-slot-text");
+@source inline("focus-visible:q-slot-ring{,-40}");

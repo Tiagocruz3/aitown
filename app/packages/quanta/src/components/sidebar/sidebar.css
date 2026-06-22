@@ -1,0 +1,420 @@
+/**
+ * Sidebar presentation — pixel-matched to the Figma "Sidebar" system
+ * (Primitives 2438:253 / Semantic 2438:278). A solid dark rail (NOT glass —
+ * Figma uses `background/elevated-end`) holding a workspace-switcher header, a
+ * scrollable body of Sections (Item rows) and a footer.
+ *
+ * Rows share a button-reset base. States: hover = white-5% (`overlay-hover`),
+ * selected = white-10% (`transparent-light-10`, the Figma `transparent/dark/10`).
+ * Collapsed (`data-collapsed` on the root) hides labels/meta/actions and centres
+ * the leading icon, shrinking the rail to an icon strip. All values are tokens;
+ * the rail width is the one component dimension (`--q-sidebar-width`).
+ */
+@source "./sidebar.tsx";
+
+@utility q-sidebar {
+  --q-sidebar-width: 14.9375rem; /* 239px — Figma _Sidebar */
+  --q-sidebar-radius: var(--hf-radius-400); /* 16px (flush → 0) */
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: var(--q-sidebar-width);
+  height: 100%;
+  padding: var(--hf-space-200); /* 8px */
+  gap: var(--hf-space-100); /* 4px */
+  background-color: var(--hf-color-background-elevated-end);
+  border-radius: var(--q-sidebar-radius);
+  color: var(--hf-color-text-primary);
+  overflow: hidden; /* clip labels as the rail narrows on collapse */
+  /* Collapse / expand — width animates; labels cross-fade (rules below). */
+  transition: width 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Docked (no floating gap) → square corners. */
+@utility q-sidebar-flush {
+  --q-sidebar-radius: var(--hf-radius-0);
+}
+
+/* ── Header — the workspace switcher (logo + name + collapse toggle) ────────── */
+@utility q-sidebar-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-200);
+}
+
+/* Clickable switcher pill (logo + name + chevron). */
+@utility q-sidebar-switcher {
+  box-sizing: border-box;
+  flex: 1 1 var(--hf-space-0);
+  min-width: var(--hf-space-0);
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-200); /* 8px */
+  padding: var(--hf-space-150); /* 6px */
+  border: var(--hf-border-width-none) solid transparent;
+  border-radius: var(--hf-radius-300); /* 12px */
+  background-color: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    width 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover { background-color: var(--hf-color-overlay-hover); }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 var(--hf-border-width-thick) var(--hf-color-border-focus); }
+}
+
+@utility q-sidebar-logo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hf-space-600); /* 24px */
+  height: var(--hf-space-600);
+  overflow: hidden;
+  border-radius: var(--hf-radius-200); /* 8px */
+
+  & > svg, & > img { width: 100%; height: 100%; }
+}
+
+@utility q-sidebar-switcher-name {
+  flex: 1 1 var(--hf-space-0);
+  min-width: var(--hf-space-0);
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-100);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--hf-color-text-primary);
+  @apply text-q-body-sm-medium;
+
+  & > svg { flex: none; width: var(--hf-space-400); height: var(--hf-space-400); color: var(--hf-color-icon-secondary); }
+}
+
+/* Collapse toggle / header action — a square icon button. */
+@utility q-sidebar-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hf-space-600); /* 24px */
+  height: var(--hf-space-600);
+  border: var(--hf-border-width-none) solid transparent;
+  border-radius: var(--hf-radius-200);
+  background-color: transparent;
+  color: var(--hf-color-icon-secondary);
+  cursor: pointer;
+  transition: color 150ms ease;
+
+  &:hover { color: var(--hf-color-icon-primary); }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 var(--hf-border-width-thick) var(--hf-color-border-focus); }
+  & > svg { width: var(--hf-space-600); height: var(--hf-space-600); }
+}
+
+/* ── Body — scrollable region of sections ──────────────────────────────────── */
+@utility q-sidebar-body {
+  flex: 1 1 auto;
+  min-height: var(--hf-space-0);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hf-space-300); /* 12px between sections */
+  padding-block: var(--hf-space-100);
+}
+
+/* ── Section — header + items ───────────────────────────────────────────────── */
+@utility q-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hf-space-050); /* 2px between rows */
+}
+
+@utility q-sidebar-section-header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-200);
+  min-height: var(--hf-space-700); /* 28px */
+  padding: var(--hf-space-100) var(--hf-space-150); /* 4px 6px */
+}
+
+@utility q-sidebar-section-title {
+  flex: 1 1 var(--hf-space-0);
+  min-width: var(--hf-space-0);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--hf-color-text-tertiary);
+  @apply text-q-caption-sm-medium;
+}
+
+@utility q-sidebar-section-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-100);
+  color: var(--hf-color-icon-secondary);
+
+  & svg { width: var(--hf-space-500); height: var(--hf-space-500); } /* 20px */
+}
+
+/* ── Shared row base (Item / FooterItem) ───────────────────── */
+@utility q-sidebar-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-200); /* 8px */
+  width: 100%;
+  border: var(--hf-border-width-none) solid transparent;
+  background-color: transparent;
+  color: var(--hf-color-text-primary);
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  /* On collapse the row shrinks to a 36px square + full radius (the circular
+   * icon button); width/height/radius ease in sync with the rail width so the
+   * full-width row MORPHS into the circle. Padding stays 6px → the icon never
+   * moves (see the collapsed block). */
+  transition:
+    background-color 150ms ease,
+    width 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 280ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover { background-color: var(--hf-color-overlay-hover); }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 var(--hf-border-width-thick) var(--hf-color-border-focus); }
+}
+
+/* selected = white-10% fill (Figma transparent/dark/10). */
+@utility q-sidebar-selected {
+  background-color: var(--hf-color-transparent-light-10);
+  &:hover { background-color: var(--hf-color-transparent-light-10); }
+}
+
+/* Leading slot (24px box) — holds ANY node: a 20px line icon (sized + tinted
+ * here), or a full-bleed Avatar / thumbnail / tile (fills the box, owns its own
+ * shape + colour). One wrapper for every Item, whatever the content. */
+@utility q-sidebar-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hf-space-600); /* 24px */
+  height: var(--hf-space-600);
+  color: var(--hf-color-icon-secondary);
+
+  & > svg { width: var(--hf-space-500); height: var(--hf-space-500); } /* 20px line icons */
+  & > img { width: 100%; height: 100%; } /* full-bleed thumbnails */
+}
+
+/* ── Pin toggle ─────────────────────────────────────────────────────────────
+ * The row stays a single button/link; the pin is a SIBLING overlaying the
+ * trailing edge (so it isn't an interactive descendant of the link). It reveals
+ * on row hover / focus and stays when pinned; meta/end fade out under it. */
+@utility q-sidebar-pinrow {
+  position: relative;
+  display: block;
+}
+@utility q-sidebar-pin {
+  position: absolute;
+  inset-inline-end: var(--hf-space-150); /* 6px — aligns with the row's right pad */
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hf-space-500); /* 20px hit target */
+  height: var(--hf-space-500);
+  border: var(--hf-border-width-none) solid transparent;
+  border-radius: var(--hf-radius-150);
+  background-color: transparent;
+  color: var(--hf-color-icon-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease, background-color 150ms ease;
+
+  &:hover { color: var(--hf-color-icon-primary); background-color: var(--hf-color-overlay-hover); }
+  &:focus-visible { opacity: 1; outline: none; box-shadow: 0 0 0 var(--hf-border-width-thick) var(--hf-color-border-focus); }
+  &[data-pinned] { opacity: 1; color: var(--hf-color-icon-primary); }
+  & > svg { width: var(--hf-space-400); height: var(--hf-space-400); } /* 16px */
+}
+.q-sidebar-pinrow:hover .q-sidebar-pin { opacity: 1; }
+/* The pin overlays the trailing slot — fade meta/end while it shows so they
+ * don't collide (meta/end already carry an opacity transition). */
+.q-sidebar-pinrow:hover .q-sidebar-meta,
+.q-sidebar-pinrow:hover .q-sidebar-end,
+.q-sidebar-pinned .q-sidebar-meta,
+.q-sidebar-pinned .q-sidebar-end { opacity: 0; }
+/* Collapsed icon strip — no room for the pin. */
+.q-sidebar-collapsed .q-sidebar-pin { display: none; }
+
+/* Search input row (Figma search variant) — revealed by the section
+ * "search" action; filters the list. */
+@utility q-sidebar-search {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-200);
+  width: 100%;
+  min-height: var(--hf-space-900); /* 36px */
+  padding: var(--hf-space-150);
+  border-radius: var(--hf-radius-300);
+  background-color: var(--hf-color-overlay-hover);
+  color: var(--hf-color-icon-secondary);
+
+  & > svg { flex: none; width: var(--hf-space-500); height: var(--hf-space-500); }
+}
+@utility q-sidebar-search-input {
+  flex: 1 1 var(--hf-space-0);
+  min-width: var(--hf-space-0);
+  appearance: none;
+  background: transparent;
+  border: var(--hf-border-width-none) solid transparent;
+  outline: none;
+  padding: var(--hf-space-0);
+  color: var(--hf-color-text-primary);
+  @apply text-q-body-sm-medium;
+
+  &::placeholder { color: var(--hf-color-text-secondary); }
+}
+
+@utility q-sidebar-label {
+  flex: 1 1 var(--hf-space-0);
+  min-width: var(--hf-space-0);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--hf-color-text-primary);
+  @apply text-q-body-sm-medium;
+}
+
+/* Trailing meta count (e.g. "484"). */
+@utility q-sidebar-meta {
+  flex: none;
+  color: var(--hf-color-text-tertiary);
+  @apply text-q-caption-sm-regular;
+}
+
+@utility q-sidebar-end {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hf-space-100);
+  color: var(--hf-color-icon-secondary);
+
+  & > svg { width: var(--hf-space-500); height: var(--hf-space-500); }
+}
+
+/* ── Item (the one row) ─────────────────────────────────────────────────────── */
+@utility q-sidebar-item {
+  min-height: calc(var(--hf-space-600) + var(--hf-space-300)); /* 36px (no space-900 token) */
+  padding: var(--hf-space-150); /* 6px */
+  border-radius: var(--hf-radius-300); /* 12px */
+}
+@utility q-sidebar-item-sm {
+  min-height: var(--hf-space-800); /* 32px */
+  padding: var(--hf-space-100) var(--hf-space-150); /* 4px 6px */
+  border-radius: var(--hf-radius-250); /* 10px */
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+@utility q-sidebar-footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hf-space-100);
+}
+
+@utility q-sidebar-footeritem {
+  min-height: var(--hf-space-900); /* 36px */
+  padding: var(--hf-space-150); /* 6px */
+  border-radius: var(--hf-radius-300); /* 12px */
+}
+/* promo — pink-tinted row, pink label, trailing badge. */
+@utility q-sidebar-footeritem-promo {
+  gap: var(--hf-space-100);
+  padding: var(--hf-space-100) var(--hf-space-300) var(--hf-space-100) var(--hf-space-150); /* 4 12 4 6 */
+  background-color: color-mix(in srgb, var(--hf-color-brand-pink) 10%, transparent);
+
+  & .q-sidebar-label { flex: 1 1 var(--hf-space-0); color: var(--hf-color-brand-pink); }
+  & .q-sidebar-icon { color: var(--hf-color-brand-pink); }
+  &:hover { background-color: color-mix(in srgb, var(--hf-color-brand-pink) 16%, transparent); }
+}
+/* login — solid secondary button row. */
+@utility q-sidebar-footeritem-login {
+  padding: var(--hf-space-100) var(--hf-space-150); /* 4px 6px */
+  background-color: var(--hf-color-background-secondary-strong);
+  &:hover { background-color: var(--hf-color-background-secondary-strong); }
+}
+
+/* ── Collapsed (icon strip) ─────────────────────────────────────────────────── */
+@utility q-sidebar-collapsed {
+  --q-sidebar-width: 3.5rem; /* 56px */
+}
+/* SEAMLESS MORPH (same DOM — no node swap). The rail WIDTH animates; the text
+ * bits FADE (opacity) in sync rather than display:none-vanishing. Width handles
+ * itself: the flex:1 label/name shrink to 0 as the rail narrows and the rail's
+ * `overflow:hidden` clips them; trailing flex:none meta/end slide off the edge.
+ * The leading icon (flex:none, first child) is untouched — its centring is
+ * padding-only, so the fade can't shove it off-centre. */
+.q-sidebar-switcher-name,
+.q-sidebar-label,
+.q-sidebar-meta,
+.q-sidebar-end {
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.q-sidebar-collapsed .q-sidebar-switcher-name,
+.q-sidebar-collapsed .q-sidebar-label,
+.q-sidebar-collapsed .q-sidebar-meta,
+.q-sidebar-collapsed .q-sidebar-end {
+  opacity: 0;
+  pointer-events: none;
+}
+/* The header toggle leaves layout entirely so its width + the header gap don't
+ * hold the logo off-centre when collapsed. */
+.q-sidebar-collapsed .q-sidebar-toggle { display: none; }
+.q-sidebar-section-header { overflow: hidden; transition: height 220ms ease; }
+.q-sidebar-collapsed .q-sidebar-section-header {
+  height: var(--hf-space-0);
+  min-height: var(--hf-space-0);
+  padding-block: var(--hf-space-0);
+}
+/* Collapsed = a circular icon button. The row shrinks to a 36×36 square with a
+ * FULL radius; padding stays 6px (6 + 24 icon + 6 = 36) so the icon sits dead
+ * centre of the circle AND at the exact same x as expanded (same row-left, same
+ * 6px left pad) — it does NOT move. width/height/radius are transitioned (row
+ * base) so the full-width row morphs smoothly into the circle. The switcher is
+ * `flex:1`, so pin it (flex:none) to the same fixed box. */
+.q-sidebar-collapsed .q-sidebar-switcher,
+.q-sidebar-collapsed .q-sidebar-row {
+  /* 36px square = icon (24, space-600) + the row's 2×6px inline padding
+   * (space-300). NB there is no --hf-space-900 token, so spell it out. */
+  flex: none;
+  width: calc(var(--hf-space-600) + var(--hf-space-300));
+  height: calc(var(--hf-space-600) + var(--hf-space-300));
+  min-height: calc(var(--hf-space-600) + var(--hf-space-300));
+  /* Radius = HALF the box (18px) → a circle. NOT radius-full (9999px): a
+   * 12px→9999px transition hits "fully round" in the first frame, so the
+   * rounding looks instant. 12px→18px interpolates smoothly with the width. */
+  border-radius: calc((var(--hf-space-600) + var(--hf-space-300)) / 2);
+}
+/* Honour reduced-motion — snap instead of slide. */
+@media (prefers-reduced-motion: reduce) {
+  .q-sidebar,
+  .q-sidebar-section-header,
+  .q-sidebar-row,
+  .q-sidebar-switcher,
+  .q-sidebar-switcher-name,
+  .q-sidebar-label,
+  .q-sidebar-meta,
+  .q-sidebar-end { transition: none; }
+}

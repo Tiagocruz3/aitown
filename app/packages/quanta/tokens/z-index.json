@@ -1,0 +1,42 @@
+{
+  "$metadata": {
+    "name": "z-index",
+    "modes": [
+      "global"
+    ]
+  },
+  "z-index": {
+    "base": {
+      "$type": "number",
+      "$value": 0
+    },
+    "dropdown": {
+      "$type": "number",
+      "$value": 10
+    },
+    "sticky": {
+      "$type": "number",
+      "$value": 20
+    },
+    "overlay": {
+      "$type": "number",
+      "$value": 30
+    },
+    "modal": {
+      "$type": "number",
+      "$value": 40
+    },
+    "popover": {
+      "$type": "number",
+      "$value": 50
+    },
+    "toast": {
+      "$type": "number",
+      "$value": 60
+    },
+    "tooltip": {
+      "$type": "number",
+      "$value": 70
+    }
+  }
+}

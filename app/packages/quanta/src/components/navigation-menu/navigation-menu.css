@@ -1,0 +1,273 @@
+/**
+ * NavigationMenu presentation — Base UI NavigationMenu skinned with quanta
+ * tokens. Registers the colocated source (quanta is symlinked) and authors the
+ * bar + morphing popup as `@utility q-nav-*` rules.
+ *
+ * The panel ROWS leave one component dimension exposed as overridable custom
+ * properties: `--q-nav-col-width` (column width) and `--q-nav-max-width` (panel
+ * cap) — precedent: `--q-menu-min-width` in menu.css.
+ *
+ * `MenuItem` deliberately REUSES the shared `q-menu-item*` utilities authored in
+ * menu.css (icon / title / subtitle / trailing layout) so panel rows match the
+ * Dropdown rows; this file only adds `q-nav-menu-item` tweaks for the grid.
+ * Base UI drives the size-morph via `--popup-width` / `--popup-height` and the
+ * cross-fade via `data-activation-direction`.
+ */
+@source "./navigation-menu.tsx";
+
+/* ── The bar ───────────────────────────────────────────────────────────────────
+ * Figma header (node 2206:984): logo + nav list on the left, an actions cluster
+ * pushed to the right; 8px block / 16px inline padding. */
+@utility q-nav-root {
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-300);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--hf-space-200) var(--hf-space-400);
+}
+
+/* Logo slot — content is the dev's; we only size/align it. */
+@utility q-nav-logo {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@utility q-nav-list {
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-0); /* items carry their own padding — Figma packs them flush */
+  list-style: none;
+  margin: var(--hf-space-0);
+  padding: var(--hf-space-0);
+}
+
+/* Bar nav-item — trigger and plain link share one pill (Figma nav-item 2206:997:
+ * px 8 / py 4, radius 8, gap 4, body-sm-medium). No chevron (not in the design). */
+@utility q-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hf-space-100);
+  padding: var(--hf-space-100) var(--hf-space-200);
+  border-radius: var(--hf-radius-200);
+  background-color: transparent;
+  color: var(--hf-color-text-secondary);
+  @apply text-q-body-sm-medium;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 150ms ease, color 150ms ease;
+
+  &:hover { background-color: var(--hf-color-overlay-hover); color: var(--hf-color-text-primary); }
+  &[data-popup-open] { background-color: var(--hf-color-overlay-hover); color: var(--hf-color-text-primary); }
+  &[data-active] { color: var(--hf-color-text-primary); }
+  &[data-disabled] { color: var(--hf-color-text-disabled); pointer-events: none; }
+}
+
+/* Leading icon slot inside a bar item (16px). */
+@utility q-nav-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--hf-space-400);
+  height: var(--hf-space-400);
+
+  & svg { width: 100%; height: 100%; }
+}
+
+/* Accent treatment — OURS by design, content-agnostic (the lime "Supercomputer"
+ * item). Brand-lime text + a soft lime glow; pair with any label/icon/badge. */
+@utility q-nav-item-accent {
+  color: var(--hf-color-brand-primary);
+  text-shadow: 0 0 var(--hf-space-200) var(--hf-color-brand-alpha-50);
+
+  &:hover,
+  &[data-popup-open] { color: var(--hf-color-brand-primary); }
+}
+
+/* ── Right-side actions cluster ─────────────────────────────────────────────
+ * Figma "right" (node 2206:1025): glass action pills + a divider + auth, pushed
+ * to the far end of the bar. Content (icons / labels / Badge / Avatar / Button)
+ * is the dev's; we own the layout + the glass-pill design. */
+@utility q-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-300);
+  margin-inline-start: auto; /* push to the right end of the bar */
+  flex-shrink: 0;
+}
+
+/* A sub-group of adjacent actions (tighter 4px rhythm). */
+@utility q-nav-actions-group {
+  display: flex;
+  align-items: center;
+  gap: var(--hf-space-100);
+}
+
+/* Glass action pill (search / Pricing / Assets). Icon-only stays square (36×36
+ * via 10px padding around a 16px icon); with a label it's 12/8 padded → 36 tall. */
+@utility q-nav-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hf-space-200);
+  padding: var(--hf-space-200) var(--hf-space-300);
+  border-radius: var(--hf-radius-250);
+  background-color: var(--hf-color-overlay-dim-soft); /* white 5% */
+  backdrop-filter: blur(var(--hf-space-300)); /* 12px */
+  -webkit-backdrop-filter: blur(var(--hf-space-300));
+  box-shadow: inset 0 var(--hf-border-width-thick) 3px var(--hf-color-transparent-light-05);
+  color: var(--hf-color-text-primary);
+  @apply text-q-body-sm-medium;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 150ms ease;
+
+  &:hover { background-color: var(--hf-color-overlay-hover); }
+  & svg { width: var(--hf-space-400); height: var(--hf-space-400); }
+}
+
+/* Icon-only square action (e.g. search). */
+@utility q-nav-action-icon {
+  min-width: calc(var(--hf-space-800) + var(--hf-space-100)); /* 36px */
+  padding: var(--hf-space-250); /* 10px around a 16px icon → 36×36 */
+}
+
+/* Vertical bar divider (12px) — wraps the Divider component so it self-stretches
+ * to a fixed height instead of the full bar height. Figma "Line" (node 2206:1044). */
+@utility q-nav-separator {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: center;
+  flex-shrink: 0;
+  height: var(--hf-space-300); /* 12px */
+}
+
+/* ── The shared morphing popup shell ───────────────────────────────────────── */
+@utility q-nav-positioner {
+  z-index: var(--hf-z-index-popover);
+  /* Hide while no item is active so a stale empty popup never flashes. */
+  &[data-anchor-hidden] { opacity: 0; pointer-events: none; }
+}
+
+@utility q-nav-popup {
+  /* Size tracks the active content; Base UI measures it onto these vars. */
+  width: var(--popup-width);
+  height: var(--popup-height);
+  box-sizing: border-box;
+  overflow: hidden;
+  transform-origin: var(--transform-origin);
+  border-radius: var(--hf-space-500);
+  border: var(--hf-border-width-thin) solid var(--hf-color-border-subtle);
+  background-color: var(--hf-color-background-glass);
+  backdrop-filter: blur(var(--hf-space-1000)); /* 40px — glass */
+  -webkit-backdrop-filter: blur(var(--hf-space-1000));
+  color: var(--hf-color-text-primary);
+  box-shadow:
+    inset 0 var(--hf-space-050) 3px var(--hf-color-transparent-light-05),
+    0 var(--hf-space-100) var(--hf-space-600) calc(-1 * var(--hf-space-200)) var(--hf-color-transparent-dark-15);
+
+  transition:
+    width 300ms cubic-bezier(0.32, 0.72, 0, 1),
+    height 300ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease,
+    transform 200ms ease;
+
+  &[data-starting-style],
+  &[data-ending-style] { opacity: 0; transform: scale(0.97); }
+  /* First open snaps to size instead of growing from 0. */
+  &[data-instant] { transition-duration: 0ms; }
+}
+
+@utility q-nav-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The panel itself — moved into the viewport when its item is active; sizes to
+ * content (which Base UI reads into --popup-*), cross-fades by direction. */
+@utility q-nav-content {
+  width: max-content;
+  height: max-content;
+  transition: opacity 200ms ease, transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-starting-style],
+  &[data-ending-style] { opacity: 0; }
+  &[data-starting-style][data-activation-direction="left"],
+  &[data-ending-style][data-activation-direction="right"] { transform: translateX(var(--hf-space-1000)); }
+  &[data-starting-style][data-activation-direction="right"],
+  &[data-ending-style][data-activation-direction="left"] { transform: translateX(calc(-1 * var(--hf-space-1000))); }
+}
+
+/* ── The panel layout ──────────────────────────────────────────────────────── */
+@utility q-nav-menu {
+  --q-nav-col-width: calc(var(--hf-space-2400) * 2); /* 12rem — overridable */
+  --q-nav-max-width: calc(var(--hf-space-2400) * 9); /* 54rem — panel cap */
+
+  display: flex;
+  gap: var(--hf-space-500);
+  max-width: var(--q-nav-max-width);
+  padding: var(--hf-space-400);
+}
+
+@utility q-nav-menu-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(var(--q-nav-col-width), 1fr);
+  gap: var(--hf-space-100) var(--hf-space-500);
+  align-content: start;
+}
+
+/* Rows per column before wrapping to the next column. */
+@utility q-nav-rows-1 { grid-template-rows: repeat(1, auto); }
+@utility q-nav-rows-2 { grid-template-rows: repeat(2, auto); }
+@utility q-nav-rows-3 { grid-template-rows: repeat(3, auto); }
+@utility q-nav-rows-4 { grid-template-rows: repeat(4, auto); }
+
+/* A group is its own full-height column (heading + stacked items). */
+@utility q-nav-group {
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hf-space-050);
+  min-width: var(--q-nav-col-width);
+}
+
+@utility q-nav-group-label {
+  padding: var(--hf-space-100) var(--hf-space-200);
+  color: var(--hf-color-text-tertiary);
+  @apply text-q-caption-sm-medium;
+}
+
+/* Grid-cell tweak over the reused q-menu-item base. */
+@utility q-nav-menu-item {
+  min-width: var(--q-nav-col-width);
+  text-decoration: none;
+}
+
+/* Optional side rail (promo / media / CTA). */
+@utility q-nav-featured {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--hf-space-200);
+  width: calc(var(--hf-space-2400) * 3); /* 18rem */
+  padding: var(--hf-space-400);
+  border-radius: var(--hf-space-400);
+  background-color: var(--hf-color-background-secondary);
+  color: var(--hf-color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .q-nav-popup,
+  .q-nav-content { transition-duration: 80ms; }
+  .q-nav-trigger-icon { transition-duration: 80ms; }
+}

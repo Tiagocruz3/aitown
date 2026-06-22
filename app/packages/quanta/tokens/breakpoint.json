@@ -1,0 +1,26 @@
+{
+  "$metadata": {
+    "name": "breakpoint",
+    "modes": [
+      "global"
+    ]
+  },
+  "breakpoint": {
+    "mobile": {
+      "$type": "dimension",
+      "$value": 320
+    },
+    "tablet": {
+      "$type": "dimension",
+      "$value": 768
+    },
+    "desktop": {
+      "$type": "dimension",
+      "$value": 1280
+    },
+    "wide": {
+      "$type": "dimension",
+      "$value": 1920
+    }
+  }
+}

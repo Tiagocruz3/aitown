@@ -1,0 +1,56 @@
+/**
+ * Avatar presentation — pinned to the Figma "Avatar" component (node 1405:5456)
+ * and its presence dot (node 1418:94, shipped standalone as Dot).
+ *
+ * The colour / typography / border-width values are emitted q-* token utilities
+ * applied in avatar.tsx; the TS unions there (COLOR_BG / COLOR_FG / SIZE_*) are
+ * the single source of truth. This file points Tailwind's scanner at the
+ * colocated source (Tailwind skips node_modules and quanta is symlinked, so the
+ * literal class strings must be registered explicitly — same as button.css) and
+ * defines the one piece of geometry that has no token: where the dot sits.
+ */
+@source "./avatar.tsx";
+
+/**
+ * Anchors the presence dot on the avatar circle's bottom-right (45°) perimeter
+ * point — matching Figma, where the dot's centre lands on the rim rather than
+ * in the bounding-box corner. The offset is `50% + (√2 / 2) · 50% = 85.355%`,
+ * which is proportional to the diameter, so a single rule fits every size. The
+ * dot is then pulled back by half its own box to centre it on that point.
+ */
+@utility q-avatar-status {
+  position: absolute;
+  left: 85.355%;
+  top: 85.355%;
+  transform: translate(-50%, -50%);
+}
+
+/**
+ * Dashed ("pending") ring — drawn as an SVG stroke, NOT `border-dashed`. CSS
+ * gives no control over dash length on a circle (browsers render a too-fine,
+ * dotted-looking pattern); the design wants longer, evenly-spaced dashes.
+ * `vector-effect: non-scaling-stroke` keeps the stroke width AND dash length a
+ * constant pixel size at every avatar size (matching Figma's pixel dash
+ * pattern), while the circle geometry scales so the ring hugs the rim.
+ * `--q-avatar-dash-array` (dash gap) is the one geometry value with no token —
+ * exposed as an overridable component dimension (precedent: --q-menu-min-width).
+ */
+@utility q-avatar-dash {
+  pointer-events: none;
+  /* Stroke colour via currentColor so it stays a token, not an SVG literal. */
+  color: var(--hf-color-transparent-dark-30);
+  overflow: visible;
+}
+
+@utility q-avatar-dash-circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--q-avatar-dash-width, var(--hf-border-width-medium));
+  stroke-dasharray: var(--q-avatar-dash-array, 3 4);
+  vector-effect: non-scaling-stroke;
+}
+
+/* Small sizes use the thin (1px) stroke, matching the Figma pending ramp. */
+@utility q-avatar-dash-thin {
+  --q-avatar-dash-width: var(--hf-border-width-thin);
+}

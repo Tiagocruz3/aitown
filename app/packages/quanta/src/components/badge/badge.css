@@ -1,0 +1,161 @@
+/**
+ * Badge presentation utilities (q-namespaced), matched to the Figma Badge
+ * component at node 526:456.
+ */
+
+@source "./badge.tsx";
+
+@utility q-badge {
+  --q-badge-bg: var(--hf-color-blue-500);
+  --q-badge-fg: var(--hf-color-text-primary);
+  --q-badge-height: var(--hf-type-line-height-200);
+  --q-badge-min-width: var(--hf-space-800);
+  --q-badge-padding-x: var(--hf-space-100);
+  --q-badge-radius: var(--hf-radius-050);
+  --q-badge-font-size: var(--hf-type-size-100); /* 12px (xs) */
+  --q-badge-letter-spacing: var(--hf-type-letter-spacing-none);
+  --q-badge-skew: -10.89deg;
+  --q-badge-scale-y: 1;
+  --q-badge-frame-transform: none;
+
+  align-items: center;
+  color: var(--q-badge-fg);
+  display: inline-flex;
+  height: var(--q-badge-height);
+  justify-content: center;
+  line-height: var(--q-badge-height);
+  min-width: var(--q-badge-min-width);
+  position: relative;
+  vertical-align: middle;
+}
+
+@utility q-badge-frame {
+  align-items: center;
+  box-sizing: border-box;
+  display: inline-flex;
+  height: var(--q-badge-height);
+  justify-content: center;
+  min-width: var(--q-badge-min-width);
+  transform: var(--q-badge-frame-transform);
+  transform-origin: center;
+}
+
+@utility q-badge-surface {
+  align-items: center;
+  background: var(--q-badge-bg);
+  border-radius: var(--q-badge-radius);
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: var(--hf-space-100);
+  height: var(--q-badge-height);
+  justify-content: center;
+  min-width: var(--q-badge-min-width);
+  overflow: hidden;
+  padding: var(--hf-space-0) var(--q-badge-padding-x);
+}
+
+@utility q-badge-text {
+  color: currentColor;
+  display: block;
+  font-family: var(--hf-type-family-grotesk);
+  font-size: var(--q-badge-font-size);
+  font-weight: var(--hf-type-weight-bold);
+  letter-spacing: var(--q-badge-letter-spacing);
+  line-height: var(--q-badge-height);
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@utility q-badge-skew {
+  --q-badge-height: var(--hf-type-line-height-200);
+  --q-badge-min-width: var(--hf-space-800);
+  --q-badge-padding-x: var(--hf-space-100);
+  --q-badge-radius: var(--hf-radius-050);
+  --q-badge-letter-spacing: var(--hf-type-letter-spacing-none);
+  --q-badge-scale-y: 0.98;
+  --q-badge-frame-transform: skewX(var(--q-badge-skew)) scaleY(var(--q-badge-scale-y));
+}
+
+@utility q-badge-compact {
+  --q-badge-height: var(--hf-type-line-height-100);
+  --q-badge-min-width: var(--hf-space-700);
+  --q-badge-padding-x: var(--hf-space-0);
+  --q-badge-radius: var(--hf-radius-050);
+  --q-badge-letter-spacing: var(--hf-type-letter-spacing-slight);
+  --q-badge-scale-y: 1;
+  --q-badge-frame-transform: none;
+
+  .q-badge-surface {
+    clip-path: path("M0 2C0 0.895431 0.895431 0 2 0H25.7021C26.9164 0 27.8505 1.07326 27.683 2.27594L26.5685 10.2759C26.4308 11.2643 25.5856 12 24.5877 12H2C0.895429 12 0 11.1046 0 10V2Z");
+    width: var(--q-badge-min-width);
+  }
+
+  .q-badge-text {
+    letter-spacing: calc(var(--hf-type-letter-spacing-slight) * 1.5);
+    margin-inline-end: var(--hf-space-050);
+  }
+}
+
+/*
+ * Blue / Pink / Purple use the raw radial gradients authored directly in Figma
+ * (node 526:456). They are NOT bound to any design-token variable upstream and
+ * match no palette value, so the exact stops are reproduced verbatim — this is
+ * "what was used in Figma". The bottom-anchored ellipse mirrors the Figma
+ * gradientTransform (origin near the surface's bottom edge).
+ */
+@utility q-badge-blue {
+  --q-badge-bg: radial-gradient(ellipse at 50% 100%, #4fc9dc 0%, #32a2ee 50%, #167bff 100%);
+  --q-badge-fg: var(--hf-color-text-primary);
+}
+
+@utility q-badge-lime {
+  --q-badge-bg: var(--hf-color-brand-primary);
+  --q-badge-fg: var(--hf-color-text-inverse);
+}
+
+@utility q-badge-pink {
+  --q-badge-bg: radial-gradient(ellipse at 50% 100%, #ee4596 0%, #ed2d84 50%, #ed1572 100%);
+  --q-badge-fg: var(--hf-color-text-primary);
+}
+
+@utility q-badge-purple {
+  --q-badge-bg: radial-gradient(ellipse at 50% 100%, #ee4596 0%, #bb2dc2 50%, #8815ed 100%);
+  --q-badge-fg: var(--hf-color-text-primary);
+}
+
+@utility q-badge-n-brand {
+  --q-badge-bg: var(--hf-color-brand-primary);
+  --q-badge-fg: var(--hf-color-text-inverse);
+}
+
+@utility q-badge-n-blue {
+  --q-badge-bg: var(--hf-color-brand-cyan);
+  --q-badge-fg: var(--hf-color-text-inverse);
+}
+
+/*
+ * Size sm — Figma "Size=sm" variants (node 526:456): skew 44×20, compact 40×17.
+ * Default (no size class) is xs, baked into the shape utilities above. The sm
+ * deltas differ by shape, so they're applied as shape×size compound rules.
+ */
+.q-badge-skew.q-badge-sm {
+  --q-badge-height: var(--hf-space-500); /* 20px */
+  --q-badge-padding-x: var(--hf-space-150); /* 6px */
+  --q-badge-font-size: var(--hf-type-size-300); /* 16px */
+  /* min-width inherits 32px; "TAG" at 16px exceeds it, so width is content-driven (≈44px). */
+}
+
+.q-badge-compact.q-badge-sm {
+  --q-badge-min-width: var(--hf-space-1000); /* 40px */
+  --q-badge-font-size: var(--hf-type-size-300); /* 16px */
+  /* 17px height pairs with the raw ticket clip below — no 17px spacing token exists. */
+  --q-badge-height: 17px;
+}
+.q-badge-compact.q-badge-sm .q-badge-surface {
+  clip-path: path("M0 2C0 0.89543 0.89543 0 2 0H37.6994C38.9146 0 39.849 1.07481 39.68 2.27822L37.8538 15.2782C37.7151 16.2656 36.8703 17 35.8733 17H2C0.895431 17 0 16.1046 0 15V2Z");
+}
+.q-badge-compact.q-badge-sm .q-badge-text {
+  letter-spacing: calc(var(--hf-type-letter-spacing-slight) * 2); /* -0.8px */
+  margin-inline-end: var(--hf-space-100); /* 4px — clear the ticket notch */
+}

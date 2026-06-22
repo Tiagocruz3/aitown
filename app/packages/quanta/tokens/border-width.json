@@ -1,0 +1,26 @@
+{
+  "$metadata": {
+    "name": "border-width",
+    "modes": [
+      "global"
+    ]
+  },
+  "border-width": {
+    "none": {
+      "$type": "dimension",
+      "$value": 0
+    },
+    "thin": {
+      "$type": "dimension",
+      "$value": 1
+    },
+    "medium": {
+      "$type": "dimension",
+      "$value": 1.5
+    },
+    "thick": {
+      "$type": "dimension",
+      "$value": 2
+    }
+  }
+}

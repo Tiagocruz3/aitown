@@ -1,0 +1,475 @@
+/**
+ * Button presentation utilities (q-namespaced). Composed by @apply-ing quanta
+ * q- tokens; every color / spacing / radius / border-width / typography / shadow
+ * value resolves to an emitted quanta token (or a token-derived value). Icons
+ * are children, sized per size via `& svg`.
+ *
+ * Pinned PIXEL-PERFECT to Figma (dark theme):
+ *   Default buttons   frame 143:2356  (Button 107:2976)
+ *     variants  primary · secondary · tertiary · outline · ghost · danger · dangerSoft
+ *     sizes     xs(24) sm(32) md(40) lg(48)            states default/hover/focus/disabled
+ *   Marketing buttons frame 1322:4366 (Marketing Button 1533:1490, Special 2100:1478)
+ *     variants  marketing primary/secondary/tertiary/ghost · special brand/pink
+ *     sizes     sm(32) md(40) lg(48) xl(56)  (tertiary/ghost also xs(24))
+ *
+ * Geometry is shared between Default and Marketing (Figma: "geometry identical
+ * to Button; only the visual layer differs"). Per size — height / h-padding /
+ * radius / typography / icon (icon == height / 2):
+ *   xs  h 24  px 6   r 6   caption-sm-medium   icon 12
+ *   sm  h 32  px 8   r 8   label-sm-medium     icon 16
+ *   md  h 40  px 12  r 10  label-sm-semi-bold  icon 20   (danger/dangerSoft r 12)
+ *   lg  h 48  px 16  r 12  label-md-semi-bold  icon 24
+ *   xl  h 56  px 20  r 12  label-lg-semi-bold  icon 28
+ *
+ * Notes:
+ *   - quanta radius tokens are not emitted yet (radius.css is TBD), so radius
+ *     maps through the matching spacing token (radius/150=6=space-150,
+ *     200=8=space-200, 250=10=space-250, 300=12=space-300).
+ *   - hover/focus = a flat overlay composited over the fill (Figma mechanism):
+ *     lime / glass / red lighten with white 20% (transparent-light-20), white
+ *     darkens with black 50% (transparent-dark-50). focus adds the lime ring.
+ *   - In dark theme `transparent-light-N` resolves to white αN and
+ *     `transparent-dark-N` to black αN, so shadows (raw black) map to
+ *     transparent-dark-* and white sheens/edges to transparent-light-*.
+ */
+
+/* button() emits literal q-button-* strings (VARIANT_CLASS / SIZE_CLASS in
+ * button.tsx). Tailwind skips node_modules for automatic content detection and
+ * quanta is consumed as a symlinked package, so point the scanner explicitly at
+ * the colocated source; the literals there match the @utility rules below. The
+ * TS unions are the single source of truth — no hand-maintained safelist. */
+@source "./button.tsx";
+
+/* Reusable keyboard-focus rings — a tokenized background-colored offset gap
+ * then a tokenized ring (Figma double-shadow: 0 0 0 2px background/primary,
+ * 0 0 0 4px border/focus). Apply to any interactive element; offset assumes the
+ * element sits on background-primary. General-purpose: hoist to a shared
+ * focus.css if a second component needs them.
+ *   q-focus-ring       — default (lime border-focus)
+ *   q-focus-ring-error — destructive (red state/error-glow) */
+@utility q-focus-ring {
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus);
+  }
+}
+@utility q-focus-ring-error {
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-state-error-glow);
+  }
+}
+
+@utility q-button {
+  /* layout — [icon] label [icon] as centered grid columns */
+  @apply inline-grid grid-flow-col max-w-full content-center items-center justify-center overflow-hidden;
+  /* label */
+  @apply text-center text-ellipsis whitespace-nowrap select-none;
+  /* interaction */
+  @apply cursor-pointer outline-none;
+  @apply transition-[color,background-color,background-image,border-color,box-shadow];
+  @apply q-focus-ring;
+  @apply disabled:pointer-events-none disabled:opacity-50;
+}
+
+/* Sizes — height/min-width on the quanta spacing scale; min-width == height
+ * makes icon-only buttons square. gap 6px (Figma label-frame padding). Icon
+ * size == height / 2. */
+@utility q-button-xs {
+  height: var(--hf-space-600);
+  min-width: var(--hf-space-600);
+  gap: var(--hf-space-150);
+  padding: var(--hf-space-0) var(--hf-space-150);
+  border-radius: var(--hf-space-150);
+  @apply text-q-caption-sm-medium;
+  & svg {
+    width: var(--hf-space-300);
+    height: var(--hf-space-300);
+  }
+}
+@utility q-button-sm {
+  height: var(--hf-space-800);
+  min-width: var(--hf-space-800);
+  gap: var(--hf-space-150);
+  padding: var(--hf-space-150) var(--hf-space-200);
+  border-radius: var(--hf-space-200);
+  @apply text-q-label-sm-medium;
+  & svg {
+    width: var(--hf-space-400);
+    height: var(--hf-space-400);
+  }
+}
+@utility q-button-md {
+  height: var(--hf-space-1000);
+  min-width: var(--hf-space-1000);
+  gap: var(--hf-space-150);
+  padding: var(--hf-space-200) var(--hf-space-300);
+  border-radius: var(--hf-space-250);
+  @apply text-q-label-sm-semi-bold;
+  & svg {
+    width: var(--hf-space-500);
+    height: var(--hf-space-500);
+  }
+}
+@utility q-button-lg {
+  height: var(--hf-space-1200);
+  min-width: var(--hf-space-1200);
+  gap: var(--hf-space-150);
+  padding: var(--hf-space-300) var(--hf-space-400);
+  border-radius: var(--hf-space-300);
+  @apply text-q-label-lg-semi-bold; /* Figma lg = label/lg/semi-bold 18px (node 106:2208) */
+  & svg {
+    width: var(--hf-space-600);
+    height: var(--hf-space-600);
+  }
+}
+@utility q-button-xl {
+  height: var(--hf-space-1400);
+  min-width: var(--hf-space-1400);
+  gap: var(--hf-space-150);
+  padding: var(--hf-space-400) var(--hf-space-500);
+  border-radius: var(--hf-space-300);
+  @apply text-q-label-lg-semi-bold;
+  & svg {
+    width: var(--hf-space-700);
+    height: var(--hf-space-700);
+  }
+}
+
+/* ───────────────────────── Default variants (143:2356) ─────────────────────
+ * fill / text / border / shadow / hover, each pinned to Figma. */
+
+/* primary: lime brand, dark label, 1.5px light edge; hover +20% white overlay.
+ * Figma (node 106:2163/2193/2208) gives the border medium width + white 45%;
+ * quanta has no 45% step, so it maps to the nearest token transparent-light-40
+ * (white 40% — visually identical at 1.5px). */
+@utility q-button-primary {
+  @apply bg-q-button-brand text-q-text-inverse;
+  border: var(--hf-border-width-medium) solid var(--hf-color-transparent-light-40);
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+}
+
+/* secondary: white, dark label + drop shadow (0 2 4 black/10); hover +50% black overlay */
+@utility q-button-secondary {
+  @apply bg-q-button-primary text-q-text-inverse;
+  box-shadow: 0 var(--hf-border-width-thick) var(--hf-space-100) var(--hf-space-0) var(--hf-color-transparent-dark-10);
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-dark-50), var(--hf-color-transparent-dark-50));
+  }
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus),
+      0 var(--hf-border-width-thick) var(--hf-space-100) var(--hf-space-0) var(--hf-color-transparent-dark-10);
+  }
+}
+
+/* tertiary: translucent glass surface (white 10%) + background blur 40px
+ * (Figma background-blur radius 80 → CSS /2); hover +20% white overlay */
+@utility q-button-tertiary {
+  background-color: var(--hf-color-transparent-light-10);
+  @apply text-q-text-primary;
+  backdrop-filter: blur(var(--hf-space-1000));
+  -webkit-backdrop-filter: blur(var(--hf-space-1000));
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+}
+
+/* outline: transparent, thin default-border (white 10%); hover/focus reveal a dim fill */
+@utility q-button-outline {
+  @apply bg-transparent text-q-text-primary;
+  @apply border-q-thin border-q-border-default;
+  @apply hover:bg-q-overlay-dim-strong focus-visible:bg-q-overlay-dim-strong;
+}
+
+/* ghost: transparent, no border; hover/focus reveal a dim fill */
+@utility q-button-ghost {
+  @apply bg-transparent text-q-text-primary;
+  @apply hover:bg-q-overlay-dim-strong focus-visible:bg-q-overlay-dim-strong;
+}
+
+/* danger: destructive red, white label; hover +20% white overlay.
+ * Focus ring is the red error-glow (not the lime default) — Figma 106:3513. */
+@utility q-button-danger {
+  @apply bg-q-button-destructive text-q-text-primary;
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+  @apply q-focus-ring-error;
+}
+
+/* dangerSoft: error-bg surface, error-fg label; hover +20% white overlay.
+ * Focus ring is the red error-glow (not the lime default) — Figma 106:3753. */
+@utility q-button-danger-soft {
+  @apply bg-q-state-error-bg text-q-state-error-fg;
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+  @apply q-focus-ring-error;
+}
+
+/* brandSoft: brand-alpha-10 surface, lime link label + icon; hover +20% white
+ * overlay; default lime focus ring (inherited from q-button). Figma 2376:1486
+ * (fill brand/alpha/10 #d1fe171a, text text/link #d1fe17, icon icon/accent). */
+@utility q-button-brand-soft {
+  @apply bg-q-brand-alpha-10 text-q-text-link;
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+}
+
+/* ── Variant × size exceptions (Figma is not purely size-driven) ─────────────
+ * primary is the only variant rendered semi-bold at xs/sm (every other variant
+ * is medium there); danger + dangerSoft round one step more than their size at
+ * md (radius/300 = 12 vs the size's radius/250 = 10). Compound selectors
+ * (specificity 0,2,0) beat the size @utility (0,1,0). */
+.q-button-primary.q-button-xs { @apply text-q-caption-sm-semi-bold; }
+.q-button-primary.q-button-sm { @apply text-q-label-sm-semi-bold; }
+.q-button-danger.q-button-md,
+.q-button-danger-soft.q-button-md { border-radius: var(--hf-space-300); }
+
+/* ───────────────────── Marketing variants (1322:4366) ──────────────────────
+ * Same geometry as the Default Button; only the visual layer differs. The 3D
+ * key is a single 3px INSET BOTTOM line (box-shadow inset 0 -3px) — NOT an
+ * extruded face — over soft drop shadows. Three Figma effect stacks:
+ *
+ *   GlossyLime (primary)   bevel inset 0 -3px #829b19 (olive)
+ *                          + drops 0 6 4 black/25 · 0 32 24 black/15
+ *   Glossy (secondary)     bevel inset 0 -3px black/32 (dark) + same drops
+ *   Glass (tertiary/ghost) backdrop-blur 12 · top sheen inset 0 2 3 white/5
+ *                          · drop 0 2 4 -0.5 black/12
+ *
+ * The -3px line is token-derived: -(border-width-thick + thin) = -3px. Values
+ * with NO quanta token are written raw and flagged `TODO: needs token`:
+ * #829b19, rgb(255 255 20) gloss, black/32 bevel, black/25 drop, black/12 glass
+ * drop. The 0.15 drop maps to the semantic --hf-color-shadow-md. */
+
+/* marketing primary: glossy lime CTA. Two stacked fill layers — a gloss sheen
+ * (transparent → opaque highlight, brightness pooling at the bottom) over the
+ * solid brand base — plus the olive bottom bevel. */
+@utility q-button-marketing-primary {
+  background-color: var(--hf-color-button-brand);
+  background-image: linear-gradient(rgba(255, 255, 20, 0) 0%, rgb(255, 255, 20) 100%); /* TODO: needs token — not in quanta */
+  border: var(--hf-border-width-none) solid transparent;
+  color: var(--hf-color-text-inverse);
+  box-shadow:
+    inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 #829b19, /* TODO: needs token — not in quanta */
+    0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) rgba(0, 0, 0, 0.25), /* TODO: needs token — not in quanta */
+    0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-shadow-md);
+
+  &:hover,
+  &:focus-visible {
+    background-image:
+      linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20)),
+      linear-gradient(rgba(255, 255, 20, 0) 0%, rgb(255, 255, 20) 100%); /* TODO: needs token — not in quanta */
+  }
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus),
+      inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 #829b19, /* TODO: needs token — not in quanta */
+      0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) rgba(0, 0, 0, 0.25), /* TODO: needs token — not in quanta */
+      0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-shadow-md);
+  }
+}
+
+/* marketing secondary: glossy white with the dark bottom bevel. hover darkens
+ * with black 10%. */
+@utility q-button-marketing-secondary {
+  background-color: var(--hf-color-button-primary);
+  border: var(--hf-border-width-none) solid transparent;
+  color: var(--hf-color-text-inverse);
+  box-shadow:
+    inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 rgba(0, 0, 0, 0.32), /* TODO: needs token — not in quanta */
+    0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) rgba(0, 0, 0, 0.25), /* TODO: needs token — not in quanta */
+    0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-shadow-md);
+
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-dark-10), var(--hf-color-transparent-dark-10));
+  }
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus),
+      inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 rgba(0, 0, 0, 0.32), /* TODO: needs token — not in quanta */
+      0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) rgba(0, 0, 0, 0.25), /* TODO: needs token — not in quanta */
+      0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-shadow-md);
+  }
+}
+
+/* marketing tertiary: glass with a hairline edge + background blur 12px. The
+ * top sheen is an inner white/5 highlight; the drop has a -0.5px spread. */
+@utility q-button-marketing-tertiary {
+  background-color: var(--hf-color-transparent-light-05);
+  border: var(--hf-border-width-thin) solid var(--hf-color-transparent-light-05);
+  color: var(--hf-color-text-primary);
+  box-shadow:
+    inset 0 var(--hf-border-width-thick) calc(var(--hf-border-width-thick) + var(--hf-border-width-thin)) var(--hf-space-0) var(--hf-color-transparent-light-05),
+    0 var(--hf-border-width-thick) var(--hf-space-100) -0.5px rgba(0, 0, 0, 0.12); /* TODO: needs token — not in quanta */
+  backdrop-filter: blur(var(--hf-space-300));
+  -webkit-backdrop-filter: blur(var(--hf-space-300));
+
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus),
+      inset 0 var(--hf-border-width-thick) calc(var(--hf-border-width-thick) + var(--hf-border-width-thin)) var(--hf-space-0) var(--hf-color-transparent-light-05),
+      0 var(--hf-border-width-thick) var(--hf-space-100) -0.5px rgba(0, 0, 0, 0.12); /* TODO: needs token — not in quanta */
+  }
+}
+
+/* marketing ghost: the SIMPLE glass — just a translucent fill + blur. No
+ * border, no drop shadow, no inner sheen, so it reads visibly flatter than the
+ * raised "glass with depth" tertiary. (Deliberate distinction from tertiary;
+ * Figma currently differentiates them only by the border, but the brief calls
+ * for ghost = simpler, tertiary = more dimensional.) */
+@utility q-button-marketing-ghost {
+  background-color: var(--hf-color-transparent-light-05);
+  border: var(--hf-border-width-none) solid transparent;
+  color: var(--hf-color-text-primary);
+  backdrop-filter: blur(var(--hf-space-300));
+  -webkit-backdrop-filter: blur(var(--hf-space-300));
+
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20));
+  }
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus);
+  }
+}
+
+/* ───────────── Special Button (2100:1476 default · 2100:1477 pink) ──────────
+ * Tall credit CTA, fixed 112px wide. A solid token fill (button/brand or
+ * brand/pink) lit by a gloss sheen, carrying the Figma "Glossy" effect: a -3px
+ * inset bevel over two drop shadows. Geometry: radius/300, py space/600,
+ * px space/500, gap space/150, column-centered; height is content-driven
+ * (24+24 padding + 12 label + 6 gap + 16 price = 82, the Figma frame height).
+ *
+ * Fully tokenised EXCEPT the gloss sheen: in Figma it's a raw linear-gradient
+ * to a vivid colour (#ffff14 brand · #fa4ae7 pink) bound to NO variable, and
+ * quanta has no token for it — kept verbatim per design decision (the sole raw
+ * value). The Glossy shadow alphas map to the nearest quanta steps
+ * (32%→dark-30, 25%→dark-20, 15%→dark-15); ≤5% off, visually identical. */
+@utility q-button-special-brand {
+  --q-button-special-bg: var(--hf-color-button-brand);
+  --q-button-special-fg: var(--hf-color-text-inverse);
+  /* gloss sheen — raw Figma gradient to vivid #ffff14; no variable / no token */
+  --q-button-special-gloss: linear-gradient(191.434deg, rgba(255, 255, 20, 0) 12.723%, rgb(255, 255, 20) 75.8%);
+}
+
+@utility q-button-special-pink {
+  --q-button-special-bg: var(--hf-color-brand-pink);
+  --q-button-special-fg: var(--hf-color-text-primary);
+  /* gloss sheen — raw Figma gradient to vivid #fa4ae7; no variable / no token */
+  --q-button-special-gloss: linear-gradient(191.434deg, rgba(243, 100, 228, 0) 12.723%, rgb(250, 74, 231) 75.8%);
+}
+
+.q-button-special-brand,
+.q-button-special-pink {
+  align-items: center;
+  background-color: var(--q-button-special-bg);
+  background-image: var(--q-button-special-gloss);
+  block-size: auto;
+  border: var(--hf-border-width-none) solid transparent;
+  border-radius: var(--hf-radius-300);
+  color: var(--q-button-special-fg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hf-space-150);
+  inline-size: calc(var(--hf-space-2000) + var(--hf-space-800)); /* 112px = 80 + 32 */
+  justify-content: center;
+  min-inline-size: calc(var(--hf-space-2000) + var(--hf-space-800));
+  overflow: clip;
+  padding: var(--hf-space-600) var(--hf-space-500);
+  text-transform: none;
+  /* Figma "Glossy": -3px inset bevel over two drops (-3px = -(thick + thin)) */
+  box-shadow:
+    inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 var(--hf-color-transparent-dark-30),
+    0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) var(--hf-color-transparent-dark-20),
+    0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-transparent-dark-15);
+
+  /* sparkle lead-icon: 16×16, inherits the content color. */
+  & svg {
+    color: var(--q-button-special-fg);
+    height: var(--hf-space-400);
+    width: var(--hf-space-400);
+  }
+
+  /* hover/focus lighten with white 20%, composited over the gloss sheen. */
+  &:hover,
+  &:focus-visible {
+    background-image:
+      linear-gradient(var(--hf-color-transparent-light-20), var(--hf-color-transparent-light-20)),
+      var(--q-button-special-gloss);
+  }
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 var(--hf-border-width-thick) var(--hf-color-background-primary),
+      0 0 0 var(--hf-space-100) var(--hf-color-border-focus),
+      inset 0 calc(-1 * (var(--hf-border-width-thick) + var(--hf-border-width-thin))) 0 0 var(--hf-color-transparent-dark-30),
+      0 var(--hf-space-150) var(--hf-space-100) var(--hf-space-0) var(--hf-color-transparent-dark-20),
+      0 var(--hf-space-800) var(--hf-space-600) var(--hf-space-0) var(--hf-color-transparent-dark-15);
+  }
+}
+
+@utility q-button-special-label {
+  color: var(--q-button-special-fg);
+  font-family: var(--hf-type-family-grotesk);
+  font-size: var(--hf-type-size-100);
+  font-weight: var(--hf-type-weight-bold);
+  letter-spacing: var(--hf-type-letter-spacing-none);
+  line-height: var(--hf-type-line-height-100);
+  text-transform: uppercase;
+}
+
+@utility q-button-special-price {
+  align-items: flex-start;
+  color: var(--q-button-special-fg);
+  display: flex;
+  font-family: var(--hf-type-family-secondary);
+  font-size: var(--hf-type-size-100);
+  font-weight: var(--hf-type-weight-medium);
+  gap: var(--hf-space-100);
+  letter-spacing: var(--hf-type-letter-spacing-none); /* Figma caption/sm/medium = 0 */
+  line-height: var(--hf-type-line-height-300);
+}
+
+@utility q-button-special-price-old {
+  text-decoration-line: line-through;
+  text-decoration-skip-ink: none;
+  text-underline-position: from-font;
+}
+
+/* Icon-only: collapse horizontal padding so the button is square (min-w == h). */
+@utility q-button-icon-only {
+  padding-inline: var(--hf-space-0);
+}
+
+.q-button-special-brand.q-button-icon-only,
+.q-button-special-pink.q-button-icon-only {
+  padding-inline: var(--hf-space-500);
+}

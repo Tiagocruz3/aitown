@@ -1,0 +1,44 @@
+/**
+ * Slot color system — component-INTERNAL styling primitives (concept ported
+ * from mdigitalcn/uikit). Hand-authored, NOT codegen, NOT golden-gated.
+ *
+ * A component sets ONE private custom property `--_c` (plus optional siblings
+ * `--_c-bg` / `--_c-fg` / `--_c-border`, and the shape/motion `--_radius` /
+ * `--_duration` / `--_ease`) inline from a single semantic `color` prop — see
+ * src/components/utils/slot.ts. Every interior surface then derives from it via
+ * these utilities, so changing one prop re-skins the whole control.
+ *
+ * Authored ONLY inside component .tsx, never in app code — the `--_c*` props are
+ * a private boundary, not consumer-facing q-* tokens.
+ *
+ * CONTRACT: `--_c` values MUST reference `--hf-color-*` runtime primitives
+ * (emitted per data-theme), NEVER `--color-q-*` (those are @theme inline-only
+ * and have no runtime value). Copying a `bg-q-*` token name into a SLOT map
+ * silently breaks theming. See ai/AGENTS.md.
+ */
+
+/* Solid fills — bg reads --_c-bg, defaulting to --_c (uikit-aligned). */
+@utility q-slot-bg    { background-color: var(--_c-bg, var(--_c)); }
+@utility q-slot-bg-fg { background-color: var(--_c-fg, oklch(100% 0 0)); }
+
+/* Soft tints — always derived from --_c (the saturated color), never --_c-bg. */
+@utility q-slot-bg-10 { background-color: color-mix(in oklch, var(--_c) 10%, transparent); }
+@utility q-slot-bg-20 { background-color: color-mix(in oklch, var(--_c) 20%, transparent); }
+
+/* Foreground / text */
+@utility q-slot-text    { color: var(--_c); }
+@utility q-slot-text-fg { color: var(--_c-fg, oklch(100% 0 0)); }
+
+/* Border — defaults to --_c when --_c-border unset. */
+@utility q-slot-border { border-color: var(--_c-border, var(--_c)); }
+
+/* Focus ring */
+@utility q-slot-ring    { --tw-ring-color: var(--_c); }
+@utility q-slot-ring-40 { --tw-ring-color: color-mix(in oklch, var(--_c) 40%, transparent); }
+
+/* ── Shape / motion slots. --_radius/--_duration/--_ease are set inline per
+ * component; until quanta radius/motion tokens are emitted (plan Phase 2)
+ * components may use native utilities (rounded-lg, duration-200) instead. ── */
+@utility q-slot-rounded  { border-radius: var(--_radius); }
+@utility q-slot-duration { transition-duration: var(--_duration); }
+@utility q-slot-ease     { transition-timing-function: var(--_ease); }

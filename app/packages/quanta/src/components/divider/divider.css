@@ -1,0 +1,28 @@
+/**
+ * Divider presentation — emulates the Figma divider SVG (node 834:1556), which
+ * is a 2px "etched" stroke: a 1px darker line stacked over a 1px lighter line,
+ * reading as a recessed groove on dark surfaces.
+ *
+ *   top    = black 15%  (#00000026)
+ *   bottom = white 10%  (#ffffff1a)
+ *
+ * Matched to quanta tokens BY VALUE — note quanta's transparent-dark/light
+ * names are inverted vs Figma's (quanta dark = black alpha, light = white
+ * alpha), so #00000026 = transparent-dark-15 and #ffffff1a = transparent-light-10.
+ *
+ * @source points Tailwind's scanner at the colocated source (quanta is a
+ * symlinked dep and Tailwind skips node_modules) — same convention as dot.css.
+ */
+@source "./divider.tsx";
+
+@utility q-divider {
+  border-width: 0;
+  border-top: var(--hf-border-width-thin) solid var(--hf-color-transparent-dark-15);
+  border-bottom: var(--hf-border-width-thin) solid var(--hf-color-transparent-light-10);
+}
+
+@utility q-divider-vertical {
+  border-width: 0;
+  border-left: var(--hf-border-width-thin) solid var(--hf-color-transparent-dark-15);
+  border-right: var(--hf-border-width-thin) solid var(--hf-color-transparent-light-10);
+}

@@ -1,0 +1,78 @@
+/**
+ * CloseButton — round dismiss control, pixel-matched to the Figma "CloseButton"
+ * (node 2052:109). Sizes 24/32/40/48 = padding space/100·150·200·300 with icon
+ * 16/20/24/24, radius/full. States:
+ *   • default — transparent/dark/05 (white 5%) fill, icon/secondary
+ *   • hover   — + overlay/hover (composites to ≈ white 10%), icon/primary
+ *   • focus   — + 2px border/focus (lime) ring, icon/primary
+ *
+ * Geometry is driven by CSS vars set per size; the surface/states are tokens-only.
+ */
+
+@source "./close-button.tsx";
+
+@utility q-close {
+  /* md (32) defaults — overridden by the size utilities below. */
+  --q-close-pad: var(--hf-space-150); /* 6px */
+  --q-close-icon: var(--hf-space-500); /* 20px */
+
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--q-close-pad);
+  border-radius: var(--hf-radius-full);
+  background-color: var(--hf-color-overlay-dim-soft); /* transparent/dark/05 = white 5% */
+  color: var(--hf-color-icon-secondary);
+  cursor: pointer;
+  outline: none;
+  transition-property: background-color, background-image, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+
+  & svg {
+    width: var(--q-close-icon);
+    height: var(--q-close-icon);
+  }
+
+  /* hover = base fill + overlay/hover layer (composites to ≈ white 10%), theme-safe. */
+  &:hover {
+    background-image: linear-gradient(var(--hf-color-overlay-hover), var(--hf-color-overlay-hover));
+    color: var(--hf-color-icon-primary);
+  }
+
+  /* focus = FocusStrong lime ring (outset, so it never shifts layout) + icon/primary. */
+  &:focus-visible {
+    color: var(--hf-color-icon-primary);
+    box-shadow: 0 0 0 var(--hf-border-width-thick) var(--hf-color-border-focus);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* Sizes — Figma 24 / 32 / 40 / 48. */
+@utility q-close-sm {
+  --q-close-pad: var(--hf-space-100); /* 4px  → 24 */
+  --q-close-icon: var(--hf-space-400); /* 16px */
+}
+@utility q-close-md {
+  --q-close-pad: var(--hf-space-150); /* 6px  → 32 */
+  --q-close-icon: var(--hf-space-500); /* 20px */
+}
+@utility q-close-lg {
+  --q-close-pad: var(--hf-space-200); /* 8px  → 40 */
+  --q-close-icon: var(--hf-space-600); /* 24px */
+}
+@utility q-close-xl {
+  --q-close-pad: var(--hf-space-300); /* 12px → 48 */
+  --q-close-icon: var(--hf-space-600); /* 24px */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .q-close { transition-duration: 1ms; }
+}

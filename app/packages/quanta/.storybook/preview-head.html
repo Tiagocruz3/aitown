@@ -1,0 +1,86 @@
+<!--
+  Anti-FOUC for Storybook canvas. Runs synchronously before first paint so
+  quanta CSS variables are resolved on <html> before React mounts the story
+  wrapper. The theme toolbar then overrides on the wrapper element via
+  withThemeByDataAttribute; the cascade restart is free because quanta uses
+  `:where([data-theme])` (specificity 0,0,0).
+
+  We always start in default-dark — matches the toolbar's defaultTheme.
+-->
+<style>
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('/fonts/Inter-Light.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/Inter-Regular.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/Inter-Medium.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/fonts/Inter-Bold.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/SpaceGrotesk-Regular.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/SpaceGrotesk-Medium.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/fonts/SpaceGrotesk-SemiBold.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/fonts/SpaceGrotesk-Bold.woff2') format('woff2');
+  }
+</style>
+<script>
+  document.documentElement.setAttribute('data-theme', 'default-dark')
+  document.documentElement.style.colorScheme = 'dark'
+</script>

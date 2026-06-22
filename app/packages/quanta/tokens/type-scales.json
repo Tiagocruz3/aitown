@@ -1,0 +1,132 @@
+{
+  "$metadata": {
+    "name": "type/scales",
+    "modes": [
+      "Desktop",
+      "Tablet",
+      "Mobile"
+    ]
+  },
+  "scale": {
+    "100": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 12,
+        "Tablet": 12,
+        "Mobile": 12
+      }
+    },
+    "200": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 14,
+        "Tablet": 14,
+        "Mobile": 14
+      }
+    },
+    "300": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 16,
+        "Tablet": 16,
+        "Mobile": 16
+      }
+    },
+    "400": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 18,
+        "Tablet": 18,
+        "Mobile": 16
+      }
+    },
+    "500": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 20,
+        "Tablet": 20,
+        "Mobile": 18
+      }
+    },
+    "600": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 24,
+        "Tablet": 22,
+        "Mobile": 20
+      }
+    },
+    "700": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 28,
+        "Tablet": 26,
+        "Mobile": 24
+      }
+    },
+    "800": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 32,
+        "Tablet": 30,
+        "Mobile": 28
+      }
+    },
+    "900": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 36,
+        "Tablet": 34,
+        "Mobile": 30
+      }
+    },
+    "1000": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 40,
+        "Tablet": 36,
+        "Mobile": 32
+      }
+    },
+    "1100": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 48,
+        "Tablet": 42,
+        "Mobile": 36
+      }
+    },
+    "1200": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 56,
+        "Tablet": 48,
+        "Mobile": 40
+      }
+    },
+    "1300": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 64,
+        "Tablet": 56,
+        "Mobile": 48
+      }
+    },
+    "1400": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 72,
+        "Tablet": 64,
+        "Mobile": 56
+      }
+    },
+    "050": {
+      "$type": "dimension",
+      "$value": {
+        "Desktop": 10,
+        "Tablet": 10,
+        "Mobile": 10
+      }
+    }
+  }
+}
