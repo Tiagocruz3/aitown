@@ -21,7 +21,7 @@ export interface Project {
   createdAt: number;
 }
 
-interface AgentStore {
+export interface AgentStore {
   sessions: ChatSession[];
   projects: Project[];
 }
