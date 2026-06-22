@@ -32,6 +32,32 @@ are inert for the Cloudflare/Vite build.
   functions) falls through to the SSR function. Static files are matched first,
   so assets are never rewritten.
 
+## Auto-deploy from GitHub Actions
+
+A workflow at `.github/workflows/deploy-vercel.yml` deploys to Vercel on every
+push to `main` (and via manual "Run workflow"). It runs on a GitHub-hosted
+runner and triggers a Vercel production deploy.
+
+Add these **repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Where to get it |
+|---|---|
+| `VERCEL_TOKEN` | Vercel → Account Settings → **Tokens** → create one |
+| `VERCEL_ORG_ID` | `app/.vercel/project.json` after `vercel link`, or Team Settings → General |
+| `VERCEL_PROJECT_ID` | `app/.vercel/project.json` after `vercel link`, or Project → Settings → General |
+
+To get the two IDs quickly, run once locally from `app/`:
+
+```bash
+cd app
+npx vercel@latest link      # links this folder to your Vercel project
+cat .vercel/project.json     # shows orgId + projectId
+```
+
+(`.vercel/` is local-only; don't commit it.) Once the secrets are set, the
+workflow handles deploys — you can use this instead of, or alongside, Vercel's
+own Git integration.
+
 ## Notes
 
 - Runs on Vercel's **Node.js** runtime (the bundle uses `node:` built-ins), not
@@ -39,4 +65,7 @@ are inert for the Cloudflare/Vite build.
 - No Cloudflare infra is used (D1/R2/KV are all off), so nothing else needs
   provisioning. `app/src/lib/bindings.server.ts` reads `process.env` instead of
   the Cloudflare `cloudflare:workers` module, keeping the build portable.
-- Auto-deploys on every push to `main` once the Vercel project is connected.
+- If you connect Vercel's Git integration **and** keep this workflow, you may get
+  two deploys per push — pick one. The workflow is handy when you want CI to own
+  deploys; the Git integration is zero-config.
+
