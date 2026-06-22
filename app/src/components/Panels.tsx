@@ -419,19 +419,65 @@ function RoadmapNote({ label }: { label: string }) {
 
 interface ChatMsg { from: "user" | "agent"; text: string }
 
+type AgentTab = "chat" | "history" | "projects" | "files" | "memory" | "tasks";
+
 export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClose: () => void }) {
   const def = PROVIDERS[provider];
   const cfg = getConfig(provider);
   const live = hasKey(provider);
-  const [tab, setTab] = useState<"chat" | "files" | "memory" | "tasks">("chat");
+  const [tab, setTab] = useState<AgentTab>("chat");
+  const [sessionId, setSessionId] = useState<string>(() => `s-${Date.now()}`);
   const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: def.agent.greeting }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [store, setStore] = useState<AgentStore>(() => getAgentStore(provider));
+  const [newProject, setNewProject] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs, busy]);
+  }, [msgs, busy, tab]);
+
+  // Persist the active session whenever it has real user content.
+  function persistSession(messages: ChatMsg[]) {
+    const hasUser = messages.some((m) => m.from === "user");
+    if (!hasUser) return;
+    const now = Date.now();
+    const session: ChatSession = {
+      id: sessionId,
+      title: titleFromMessages(messages),
+      createdAt: now,
+      updatedAt: now,
+      messages,
+    };
+    saveSession(provider, session);
+    setStore(getAgentStore(provider));
+  }
+
+  function newChat() {
+    setSessionId(`s-${Date.now()}`);
+    setMsgs([{ from: "agent", text: def.agent.greeting }]);
+    setTab("chat");
+  }
+
+  function loadSession(s: ChatSession) {
+    setSessionId(s.id);
+    setMsgs(s.messages.length ? s.messages : [{ from: "agent", text: def.agent.greeting }]);
+    setTab("chat");
+  }
+
+  function removeSession(id: string) {
+    deleteSession(provider, id);
+    setStore(getAgentStore(provider));
+  }
+
+  function createProject() {
+    const name = newProject.trim();
+    if (!name) return;
+    addProject(provider, { id: `p-${Date.now()}`, name, note: "", createdAt: Date.now() });
+    setNewProject("");
+    setStore(getAgentStore(provider));
+  }
 
   async function send() {
     const text = input.trim();
@@ -454,19 +500,34 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
           },
         });
         if (data.error) throw new Error(data.error);
-        setMsgs((m) => [...m, { from: "agent", text: data.text || "(no response)" }]);
+        const done = [...next, { from: "agent" as const, text: data.text || "(no response)" }];
+        setMsgs(done);
+        persistSession(done);
       } catch (err) {
-        setMsgs((m) => [...m, { from: "agent", text: `⚠️ Couldn't reach ${def.company} (${(err as Error).message}). Check the API key in my building's settings.` }]);
+        const done = [...next, { from: "agent" as const, text: `⚠️ Couldn't reach ${def.company}: ${(err as Error).message}. Open my building → Test connection to diagnose.` }];
+        setMsgs(done);
+        persistSession(done);
       } finally {
         setBusy(false);
       }
     } else {
       setTimeout(() => {
-        setMsgs((m) => [...m, { from: "agent", text: mockReply(def.agent.name, def.agent.voice, text) }]);
+        const done = [...next, { from: "agent" as const, text: mockReply(def.agent.name, def.agent.voice, text) }];
+        setMsgs(done);
+        persistSession(done);
         setBusy(false);
       }, 650);
     }
   }
+
+  const TABS: { id: AgentTab; label: string }[] = [
+    { id: "chat", label: "Chat" },
+    { id: "history", label: "History" },
+    { id: "projects", label: "Projects" },
+    { id: "files", label: "Files" },
+    { id: "memory", label: "Memory" },
+    { id: "tasks", label: "Tasks" },
+  ];
 
   return (
     <RightPanel accent={def.color}>
@@ -479,20 +540,24 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
             <h2 className="font-bold text-white">{def.agent.name}</h2>
             <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: live ? "#22c55e22" : "#9ca3af22", color: live ? "#86efac" : "#cbd5e1" }}>● {live ? "live" : "demo"}</span>
           </div>
-          <div className="text-xs text-white/50">{def.agent.title} · {def.models.find((m) => m.id === cfg.model)?.label ?? cfg.model}</div>
+          <div className="truncate text-xs text-white/50">{def.agent.title} · {cfg.model}</div>
         </div>
         <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
       </div>
 
-      {/* sub-tabs: Chat / Files / Memory / Tasks */}
-      <div className="flex gap-1.5 border-b border-white/10 px-3 py-2">
-        {(["chat", "files", "memory", "tasks"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition ${tab === t ? "bg-white text-black" : "bg-white/8 text-white/65 hover:bg-white/15"}`}>{t}</button>
+      {/* sub-tabs */}
+      <div className="flex gap-1.5 overflow-x-auto border-b border-white/10 px-3 py-2">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={`shrink-0 rounded-lg px-3 py-1 text-xs font-semibold transition ${tab === t.id ? "bg-white text-black" : "bg-white/8 text-white/65 hover:bg-white/15"}`}>{t.label}</button>
         ))}
       </div>
 
-      {tab === "chat" ? (
+      {tab === "chat" && (
         <>
+          <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5">
+            <span className="text-[11px] text-white/45">{titleFromMessages(msgs)}</span>
+            <button onClick={newChat} className="rounded-lg bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-white/75 hover:bg-white/15">+ New chat</button>
+          </div>
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
@@ -518,7 +583,64 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
             {!live && <p className="mt-2 text-center text-[11px] text-white/35">Demo mode · add an API key in {def.name}'s settings for live replies</p>}
           </div>
         </>
-      ) : (
+      )}
+
+      {tab === "history" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-bold text-white/80">Chat history</span>
+            <button onClick={newChat} className="rounded-lg bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-white/75 hover:bg-white/15">+ New chat</button>
+          </div>
+          {store.sessions.length === 0 ? (
+            <RoadmapNote label="No past chats yet — start a conversation and it saves here" />
+          ) : (
+            <div className="space-y-2">
+              {store.sessions.map((s) => (
+                <div key={s.id} className={`flex items-center gap-2 rounded-xl border p-2.5 ${s.id === sessionId ? "border-white/30 bg-white/10" : "border-white/10 bg-white/5"}`}>
+                  <button onClick={() => loadSession(s)} className="min-w-0 flex-1 text-left">
+                    <div className="truncate text-sm font-medium text-white">{s.title}</div>
+                    <div className="text-[11px] text-white/40">{s.messages.length} messages · {new Date(s.updatedAt).toLocaleDateString()}</div>
+                  </button>
+                  <button onClick={() => removeSession(s.id)} className="rounded-lg px-2 py-1 text-xs text-white/40 hover:bg-red-500/15 hover:text-red-300">🗑</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "projects" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mb-3 flex gap-2">
+            <input
+              value={newProject}
+              onChange={(e) => setNewProject(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") createProject(); }}
+              placeholder="New project name…"
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25"
+            />
+            <button onClick={createProject} className="rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: def.color, color: def.ink }}>Add</button>
+          </div>
+          {store.projects.length === 0 ? (
+            <RoadmapNote label="No projects yet — create one to group this agent's work" />
+          ) : (
+            <div className="space-y-2">
+              {store.projects.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2.5">
+                  <span className="text-lg">📁</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-white">{p.name}</div>
+                    <div className="text-[11px] text-white/40">{new Date(p.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <button onClick={() => { deleteProject(provider, p.id); setStore(getAgentStore(provider)); }} className="rounded-lg px-2 py-1 text-xs text-white/40 hover:bg-red-500/15 hover:text-red-300">🗑</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(tab === "files" || tab === "memory" || tab === "tasks") && (
         <div className="flex-1 overflow-y-auto p-4">
           <RoadmapNote label={tab[0].toUpperCase() + tab.slice(1)} />
         </div>
