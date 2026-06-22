@@ -197,8 +197,10 @@ export function Game() {
         roads={roads}
         placing={placing}
         roadTool={roadTool}
+        movingId={movingId}
         onPlace={place}
         onPaintRoad={paintRoad}
+        onMoveTo={moveTo}
         onPickBuilding={(b) => setOpenBuilding(b)}
         onPickAgent={(id) => {
           const a = agents.current.find((x) => x.id === id);
