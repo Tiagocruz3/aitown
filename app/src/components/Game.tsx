@@ -510,6 +510,7 @@ function DockDrawer({
 const DOCK_TITLE: Record<string, string> = {
   "chat-agents": "Chat Agents",
   buildings: "Provider Buildings",
+  roads: "Roads",
   workforce: "Workforce",
   integrations: "Integrations",
   marketplace: "Marketplace",
