@@ -472,6 +472,7 @@ export function GameCanvas({
         buildingAtScreen(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight) ??
         (inGrid ? buildingAt(cell.col, cell.row) : undefined);
       if (b) cbRef.current.onPickBuilding(b);
+      else cbRef.current.onDeselect();
     }
     function onWheel(e: WheelEvent) {
       e.preventDefault();
