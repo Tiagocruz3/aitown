@@ -53,11 +53,6 @@ export function BuildingPanel({
   const def = PROVIDERS[building.provider];
   const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
   const [showKey, setShowKey] = useState(false);
-  const connected = cfg.apiKey.trim().length > 0;
-
-  const def = PROVIDERS[building.provider];
-  const [cfg, setCfg] = useState<ProviderConfig>(() => getConfig(building.provider));
-  const [showKey, setShowKey] = useState(false);
   const [models, setModels] = useState<ModelOpt[]>(def.models);
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
