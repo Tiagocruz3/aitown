@@ -187,20 +187,16 @@ export function GameCanvas({
       const hov = hoverRef.current;
       if (hov && hov.col >= 0 && hov.row >= 0 && hov.col < GRID && hov.row < GRID) {
         const occupied = !!buildingAt(hov.col, hov.row);
-        const ok = placingRef.current ? !occupied : true;
-        drawTile(
-          hov.col,
-          hov.row,
-          cam,
-          cw,
-          ch,
-          placingRef.current
-            ? ok
-              ? "rgba(80,200,120,0.55)"
-              : "rgba(230,80,80,0.55)"
-            : "rgba(255,255,255,0.28)",
-          "rgba(255,255,255,0.9)",
-        );
+        const rt = roadToolRef.current;
+        let fill = "rgba(255,255,255,0.28)";
+        if (placingRef.current) {
+          fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(80,200,120,0.55)";
+        } else if (rt === "road") {
+          fill = occupied ? "rgba(230,80,80,0.55)" : "rgba(120,160,255,0.6)";
+        } else if (rt === "erase-road") {
+          fill = "rgba(255,140,60,0.55)";
+        }
+        drawTile(hov.col, hov.row, cam, cw, ch, fill, "rgba(255,255,255,0.9)");
       }
 
       type Draw = { depth: number; y: number; fn: () => void };
