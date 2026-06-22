@@ -38,6 +38,68 @@ function envKey(provider: string): string {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* listModels — fetch the provider's REAL model catalog with the key   */
+/* ------------------------------------------------------------------ */
+
+const ModelsInput = z.object({
+  provider: z.enum(["openai", "anthropic", "grok", "openrouter"]),
+  apiKey: z.string().default(""),
+  apiBase: z.string().url(),
+});
+
+// Friendlier label from a raw model id.
+function prettyLabel(id: string): string {
+  return id;
+}
+
+export const listModels = createServerFn({ method: "POST" })
+  .inputValidator(ModelsInput)
+  .handler(async ({ data }) => {
+    const key = (data.apiKey || envKey(data.provider)).trim();
+    if (!key) {
+      return { models: [] as { id: string; label: string }[], error: "No API key — enter one to load models." };
+    }
+    const base = data.apiBase.replace(/\/$/, "");
+    try {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (data.provider === "anthropic") {
+        headers["x-api-key"] = key;
+        headers["anthropic-version"] = "2023-06-01";
+      } else {
+        headers["authorization"] = `Bearer ${key}`;
+      }
+      if (data.provider === "openrouter") {
+        headers["HTTP-Referer"] = "https://agentvillage.os";
+        headers["X-Title"] = "AgentVillage OS";
+      }
+
+      const res = await fetch(`${base}/models`, { method: "GET", headers });
+      const json = (await res.json()) as {
+        data?: { id?: string; name?: string }[];
+        error?: { message?: string };
+      };
+      if (!res.ok) {
+        return { models: [], error: json?.error?.message || `HTTP ${res.status}` };
+      }
+      const raw = json.data ?? [];
+      let models = raw
+        .map((m) => ({ id: m.id ?? "", label: m.name ?? prettyLabel(m.id ?? "") }))
+        .filter((m) => m.id);
+
+      // Keep the lists relevant: OpenAI/Grok → chat models only; sort newest-ish first.
+      if (data.provider === "openai") {
+        models = models.filter((m) => /^(gpt|o[0-9]|chatgpt)/i.test(m.id));
+      } else if (data.provider === "grok") {
+        models = models.filter((m) => /grok/i.test(m.id));
+      }
+      models.sort((a, b) => a.id.localeCompare(b.id));
+      return { models };
+    } catch (err) {
+      return { models: [], error: (err as Error).message };
+    }
+  });
+
 export const chat = createServerFn({ method: "POST" })
   .inputValidator(ChatInput)
   .handler(async ({ data }) => {
