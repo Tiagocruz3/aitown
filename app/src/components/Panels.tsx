@@ -559,7 +559,7 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
           apiBase: cfg.apiBase,
           model: cfg.model,
           messages: next.map((m) => ({ role: m.from === "user" ? ("user" as const) : ("assistant" as const), content: m.text })),
-          system: `You are ${def.agent.name}, the ${def.agent.title} in AgentVillage OS. Personality: ${def.agent.personality} Be ${def.agent.voice}. Keep replies concise.`,
+          system: systemPromptOf(provider),
         });
         if (data.error) throw new Error(data.error);
         const done = [...next, { from: "agent" as const, text: data.text || "(no response)" }];
