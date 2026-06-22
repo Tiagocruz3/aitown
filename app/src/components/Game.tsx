@@ -8,6 +8,7 @@ import {
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
 import { DockTray } from "./Trays";
 import { ContextMenu, BrandImg } from "./Modals";
+import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
