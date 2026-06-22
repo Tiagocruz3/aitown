@@ -241,6 +241,7 @@ export function GameCanvas({
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(def.buildingArt) ? loadImage(def.buildingArt) : null;
         const w = TILE_W * 1.5 * cam.zoom;
+        const isMoving = movingRef.current === b.id;
         draws.push({
           depth: b.col + b.row,
           y: s.y,
@@ -253,6 +254,21 @@ export function GameCanvas({
             ctx!.ellipse(s.x, s.y, w * 0.42, w * 0.2, 0, 0, Math.PI * 2);
             ctx!.fill();
             ctx!.restore();
+            // moving highlight ring
+            if (isMoving) {
+              const pulse = 0.5 + 0.5 * Math.sin(now / 200);
+              ctx!.save();
+              ctx!.globalAlpha = 0.5 + 0.4 * pulse;
+              ctx!.strokeStyle = "#ffffff";
+              ctx!.lineWidth = 3 * cam.zoom;
+              ctx!.setLineDash([8 * cam.zoom, 6 * cam.zoom]);
+              ctx!.beginPath();
+              ctx!.ellipse(s.x, s.y, w * 0.46, w * 0.23, 0, 0, Math.PI * 2);
+              ctx!.stroke();
+              ctx!.restore();
+            }
+            ctx!.save();
+            if (isMoving) ctx!.globalAlpha = 0.65;
             if (img) {
               const h = w * (img.height / img.width);
               ctx!.drawImage(img, s.x - w / 2, s.y - h + TILE_H * 0.5 * cam.zoom, w, h);
@@ -260,6 +276,7 @@ export function GameCanvas({
               ctx!.fillStyle = def.color;
               ctx!.fillRect(s.x - w / 4, s.y - w * 0.6, w / 2, w * 0.6);
             }
+            ctx!.restore();
           },
         });
       }
