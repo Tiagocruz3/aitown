@@ -81,6 +81,8 @@ export function GameCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const camRef = useRef<Camera>({ x: 0, y: -80, zoom: 0.85 });
   const hoverRef = useRef<{ col: number; row: number } | null>(null);
+  // Last empty tile the user clicked — highlighted for feedback.
+  const pickedCellRef = useRef<{ col: number; row: number } | null>(null);
   const dragRef = useRef<{ on: boolean; lx: number; ly: number; moved: boolean }>({
     on: false,
     lx: 0,
@@ -250,6 +252,13 @@ export function GameCanvas({
         drawTile(hov.col, hov.row, cam, cw, ch, fill, "rgba(255,255,255,0.9)");
       }
 
+      // Persistent highlight on the tile the user last clicked (when not in a
+      // build/move/road flow). Gives a clear "you selected this square" cue.
+      const pc = pickedCellRef.current;
+      if (!buildMode && pc && pc.col >= 0 && pc.row >= 0 && pc.col < GRID && pc.row < GRID) {
+        drawTile(pc.col, pc.row, cam, cw, ch, "rgba(255,255,255,0.20)", "rgba(255,255,255,0.9)");
+      }
+
       type Draw = { depth: number; y: number; fn: () => void };
       const draws: Draw[] = [];
 
@@ -265,12 +274,12 @@ export function GameCanvas({
           depth: b.col + b.row,
           y: s.y,
           fn: () => {
-            // brand glow pad under the building
+            // soft grounded shadow under the building, sized to the tile
             ctx!.save();
-            ctx!.globalAlpha = 0.35;
-            ctx!.fillStyle = bColor;
+            ctx!.globalAlpha = 0.22;
+            ctx!.fillStyle = "#10300f";
             ctx!.beginPath();
-            ctx!.ellipse(s.x, s.y, w * 0.42, w * 0.2, 0, 0, Math.PI * 2);
+            ctx!.ellipse(s.x, s.y, TILE_W * 0.46 * cam.zoom, TILE_H * 0.42 * cam.zoom, 0, 0, Math.PI * 2);
             ctx!.fill();
             ctx!.restore();
             // moving highlight ring
@@ -439,8 +448,10 @@ export function GameCanvas({
       const cell = screenToGrid(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight);
       const inGrid = cell.col >= 0 && cell.row >= 0 && cell.col < GRID && cell.row < GRID;
 
-      // MOVE mode: relocate the building being moved to the clicked tile
+      // MOVE mode: relocate the building being moved to the clicked tile.
+      // Only valid in-grid, unoccupied tiles — never off the terrain.
       if (movingRef.current) {
+        pickedCellRef.current = null;
         if (
           inGrid &&
           !buildingAt(cell.col, cell.row) &&
@@ -451,8 +462,9 @@ export function GameCanvas({
         return;
       }
 
-      // PLACE mode: drop a new building
+      // PLACE mode: drop a new building — only on a real terrain tile.
       if (placingActiveRef.current) {
+        pickedCellRef.current = null;
         if (
           inGrid &&
           !buildingAt(cell.col, cell.row) &&
@@ -476,6 +488,7 @@ export function GameCanvas({
         }
       }
       if (pickedAgent) {
+        pickedCellRef.current = null;
         cbRef.current.onPickAgent(pickedAgent);
         return;
       }
@@ -484,8 +497,14 @@ export function GameCanvas({
       const b =
         buildingAtScreen(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight) ??
         (inGrid ? buildingAt(cell.col, cell.row) : undefined);
-      if (b) cbRef.current.onPickBuilding(b);
-      else cbRef.current.onDeselect();
+      if (b) {
+        pickedCellRef.current = null;
+        cbRef.current.onPickBuilding(b);
+      } else {
+        // Clicked empty ground — highlight that tile (only if it's real terrain).
+        pickedCellRef.current = inGrid ? { col: cell.col, row: cell.row } : null;
+        cbRef.current.onDeselect();
+      }
     }
     function onWheel(e: WheelEvent) {
       e.preventDefault();

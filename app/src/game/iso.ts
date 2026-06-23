@@ -27,13 +27,15 @@ export function isoToScreen(isoX: number, isoY: number, cam: Camera, cw: number,
   };
 }
 
-// Convert a screen click back to the grid cell under it.
+// Convert a screen click back to the grid cell under it. gridToIso places each
+// tile at its DIAMOND CENTER, so we pick the nearest tile by rounding (not
+// flooring — flooring snaps to a corner and lands half a tile off).
 export function screenToGrid(sx: number, sy: number, cam: Camera, cw: number, ch: number) {
   const ix = (sx - cam.x - cw / 2) / cam.zoom;
   const iy = (sy - cam.y - ch / 2) / cam.zoom;
   const col = (ix / (TILE_W / 2) + iy / (TILE_H / 2)) / 2;
   const row = (iy / (TILE_H / 2) - ix / (TILE_W / 2)) / 2;
-  return { col: Math.floor(col), row: Math.floor(row) };
+  return { col: Math.round(col), row: Math.round(row) };
 }
 
 // --- Image cache (client only) ---
