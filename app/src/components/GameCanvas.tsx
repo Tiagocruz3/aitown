@@ -261,7 +261,7 @@ export function GameCanvas({
           const [cs, rs] = key.split(",");
           const c = Number(cs);
           const r = Number(rs);
-          drawTile(c, r, cam, cw, ch, ROAD.fill, ROAD.edge);
+          drawTile(c, r, cam, cw, ch, ROAD.fill);
           // centre dash markings (only readable when zoomed in)
           if (cam.zoom > 0.7) {
             const iso = gridToIso(c, r, cam.rot);
