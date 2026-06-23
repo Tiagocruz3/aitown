@@ -14,7 +14,6 @@ import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
-  GRID_HELP,
   TOWN_HALL,
   type DockKind,
   type ProviderId,
@@ -464,11 +463,6 @@ export function Game() {
           </button>
         </div>
       )}
-
-      {/* hint */}
-      <div className="pointer-events-none absolute bottom-28 left-4 hidden max-w-xs rounded-lg bg-black/30 px-3 py-1.5 text-[11px] text-white/70 backdrop-blur sm:block">
-        {GRID_HELP}
-      </div>
 
       {/* ===== Dynamic dock — fixed-size game toolbar with menu-stack nav ===== */}
       {/* While moving a building the dock collapses to the main menu so the */}
