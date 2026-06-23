@@ -357,7 +357,9 @@ export function GameCanvas({
               const n = model.frames.length;
               const camSteps = Math.round(((cam.rot ?? 0) / (Math.PI * 2)) * n);
               const frame = model.frames[((((b.rot ?? 0) - camSteps) % n) + n) % n];
-              const ds = (TILE_W * 0.98 * cam.zoom) / model.footFrac;
+              // footFrac is the model's circumscribed-circle width, so target a
+              // bit over a tile to make the actual base ~fill the square.
+              const ds = (TILE_W * MODEL_TILE_FILL * cam.zoom) / model.footFrac;
               ctx!.drawImage(frame, s.x - model.base.x * ds, groundY - model.base.y * ds, ds, ds);
             } else if (img) {
               const h = w * (img.height / img.width);
@@ -646,6 +648,11 @@ export function GameCanvas({
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
+
+// How much of a tile a 3D building footprint should fill (1.0 ≈ one square).
+// footFrac is the model's circumscribed circle, ~1.4× its base, so >1 makes
+// the visible base roughly fill the tile. Tune this to taste.
+const MODEL_TILE_FILL = 1.45;
 
 // Organic grass: a small palette of close greens, picked deterministically per
 // tile (so it's randomly scattered but stable across frames — no flicker).
