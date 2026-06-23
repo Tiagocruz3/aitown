@@ -185,6 +185,9 @@ export const PROVIDER_ORDER: ProviderId[] = [
 // (replacing the flat sprite). Served from app/public/ → /models/*.glb.
 export const BUILDING_MODELS: Partial<Record<ProviderId, string>> = {
   openai: "/models/openai-hq.glb",
+  anthropic: "/models/anthropic-studio.glb",
+  grok: "/models/grok-tower.glb",
+  openrouter: "/models/openrouter-hub.glb",
 };
 
 // ---- Dock -------------------------------------------------------------------
