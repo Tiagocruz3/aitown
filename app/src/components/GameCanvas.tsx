@@ -254,13 +254,29 @@ export function GameCanvas({
         }
       }
 
-      // road layer — flat tiles, no centre-line markings
+      // road layer — fill ALL road tiles as one path so adjacent tiles merge
+      // seamlessly (internal shared edges aren't anti-aliased; no seams).
       const roadSet = roads.current;
       if (roadSet.size) {
+        ctx!.beginPath();
         for (const key of roadSet) {
           const [cs, rs] = key.split(",");
-          drawTile(Number(cs), Number(rs), cam, cw, ch, ROAD.fill);
+          const c = Number(cs);
+          const r = Number(rs);
+          const q = [
+            gridToIso(c - 0.5, r - 0.5, cam.rot),
+            gridToIso(c + 0.5, r - 0.5, cam.rot),
+            gridToIso(c + 0.5, r + 0.5, cam.rot),
+            gridToIso(c - 0.5, r + 0.5, cam.rot),
+          ].map((p) => isoToScreen(p.x, p.y, cam, cw, ch));
+          ctx!.moveTo(q[0].x, q[0].y);
+          ctx!.lineTo(q[1].x, q[1].y);
+          ctx!.lineTo(q[2].x, q[2].y);
+          ctx!.lineTo(q[3].x, q[3].y);
+          ctx!.closePath();
         }
+        ctx!.fillStyle = ROAD.fill;
+        ctx!.fill();
       }
 
       // Tile highlight only appears when something is selected to build/place —
