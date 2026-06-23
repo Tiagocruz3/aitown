@@ -387,7 +387,7 @@ export function Game() {
     : null;
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-[#8fd3ff] select-none">
+    <div className="fixed inset-0 overflow-hidden bg-[#8fd3ff] select-none">
       <GameCanvas
         buildings={buildings}
         agents={agents}
