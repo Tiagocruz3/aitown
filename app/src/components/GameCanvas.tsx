@@ -83,7 +83,13 @@ export function GameCanvas({
   onContextBuilding,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const camRef = useRef<Camera>({ x: 0, y: -80, zoom: 0.85 });
+  const camRef = useRef<Camera>({ x: 0, y: 40, zoom: 0.85, rot: 0, rotTarget: 0 });
+
+  // Orbit the view by 45° steps (eased in the frame loop). Yaw only.
+  function rotateView(dir: number) {
+    const cam = camRef.current;
+    cam.rotTarget = (cam.rotTarget ?? 0) + dir * (Math.PI / 4);
+  }
   const hoverRef = useRef<{ col: number; row: number } | null>(null);
   // Last empty tile the user clicked — highlighted for feedback.
   const pickedCellRef = useRef<{ col: number; row: number } | null>(null);
@@ -116,10 +122,14 @@ export function GameCanvas({
   const buildingAtScreen = useCallback(
     (px: number, py: number, cam: Camera, cw: number, ch: number) => {
       const list = buildingsRef.current;
-      // iterate front-to-back: higher depth (col+row) is drawn later / on top
-      const sorted = [...list].sort((a, b) => b.col + b.row - (a.col + a.row));
+      // iterate front-to-back (nearer = larger projected screen-Y, on top)
+      const sorted = [...list].sort(
+        (a, b) =>
+          isoToScreen(gridToIso(b.col, b.row, cam.rot).x, gridToIso(b.col, b.row, cam.rot).y, cam, cw, ch).y -
+          isoToScreen(gridToIso(a.col, a.row, cam.rot).x, gridToIso(a.col, a.row, cam.rot).y, cam, cw, ch).y,
+      );
       for (const b of sorted) {
-        const iso = gridToIso(b.col, b.row);
+        const iso = gridToIso(b.col, b.row, cam.rot);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const art = buildingArtOf(b);
         const img = isReady(art) ? loadImage(art) : null;
@@ -175,15 +185,19 @@ export function GameCanvas({
       fill: string,
       stroke?: string,
     ) {
-      const iso = gridToIso(col, row);
-      const c = isoToScreen(iso.x, iso.y, cam, cw, ch);
-      const hw = (TILE_W / 2) * cam.zoom;
-      const hh = (TILE_H / 2) * cam.zoom;
+      // Project the tile's four ground corners so it rotates with the view.
+      const rot = cam.rot ?? 0;
+      const p = [
+        gridToIso(col - 0.5, row - 0.5, rot),
+        gridToIso(col + 0.5, row - 0.5, rot),
+        gridToIso(col + 0.5, row + 0.5, rot),
+        gridToIso(col - 0.5, row + 0.5, rot),
+      ].map((q) => isoToScreen(q.x, q.y, cam, cw, ch));
       ctx!.beginPath();
-      ctx!.moveTo(c.x, c.y - hh);
-      ctx!.lineTo(c.x + hw, c.y);
-      ctx!.lineTo(c.x, c.y + hh);
-      ctx!.lineTo(c.x - hw, c.y);
+      ctx!.moveTo(p[0].x, p[0].y);
+      ctx!.lineTo(p[1].x, p[1].y);
+      ctx!.lineTo(p[2].x, p[2].y);
+      ctx!.lineTo(p[3].x, p[3].y);
       ctx!.closePath();
       ctx!.fillStyle = fill;
       ctx!.fill();
@@ -202,6 +216,11 @@ export function GameCanvas({
       const cw = canvas.clientWidth;
       const ch = canvas.clientHeight;
 
+      // ease the view yaw toward its target (smooth orbit)
+      const rotTarget = cam.rotTarget ?? 0;
+      cam.rot = (cam.rot ?? 0) + (rotTarget - (cam.rot ?? 0)) * Math.min(1, dt * 9);
+      if (Math.abs(rotTarget - (cam.rot ?? 0)) < 0.0004) cam.rot = rotTarget;
+
       const g = ctx!.createLinearGradient(0, 0, 0, ch);
       g.addColorStop(0, "#8fd3ff");
       g.addColorStop(0.55, "#bfe9c9");
@@ -212,14 +231,12 @@ export function GameCanvas({
       // The terrain: a flat base field (fills any sub-pixel seams), then per-
       // tile random green shades for organic texture — no borders, so it never
       // reads like a chess board. Individual squares still only highlight on
-      // interaction.
-      const hw = TILE_W / 2;
-      const hh = TILE_H / 2;
+      // interaction. Outer corners rotate with the view.
       const corners = [
-        { x: 0, y: -hh }, // north
-        { x: GRID * hw, y: (GRID - 1) * hh }, // east
-        { x: 0, y: (2 * GRID - 1) * hh }, // south
-        { x: -GRID * hw, y: (GRID - 1) * hh }, // west
+        gridToIso(-0.5, -0.5, cam.rot),
+        gridToIso(GRID - 0.5, -0.5, cam.rot),
+        gridToIso(GRID - 0.5, GRID - 0.5, cam.rot),
+        gridToIso(-0.5, GRID - 0.5, cam.rot),
       ].map((p) => isoToScreen(p.x, p.y, cam, cw, ch));
       ctx!.beginPath();
       ctx!.moveTo(corners[0].x, corners[0].y);
@@ -244,7 +261,7 @@ export function GameCanvas({
           drawTile(c, r, cam, cw, ch, ROAD.fill, ROAD.edge);
           // centre dash markings (only readable when zoomed in)
           if (cam.zoom > 0.7) {
-            const iso = gridToIso(c, r);
+            const iso = gridToIso(c, r, cam.rot);
             const ctr = isoToScreen(iso.x, iso.y, cam, cw, ch);
             ctx!.save();
             ctx!.strokeStyle = ROAD.dash;
@@ -293,7 +310,7 @@ export function GameCanvas({
       for (const b of buildingsRef.current) {
         const bColor = buildingColorOf(b);
         const bArt = buildingArtOf(b);
-        const iso = gridToIso(b.col, b.row);
+        const iso = gridToIso(b.col, b.row, cam.rot);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(bArt) ? loadImage(bArt) : null;
         // Rotatable 3D model (if this building has a GLB) — falls back to the
@@ -334,8 +351,11 @@ export function GameCanvas({
             if (model) {
               // Size the frame so the model's footprint ≈ one tile wide, and
               // anchor its projected base-center exactly on the tile center.
+              // Offset the shown frame by the view yaw so the model turns with
+              // the camera (looks truly 3D as you orbit).
               const n = model.frames.length;
-              const frame = model.frames[(((b.rot ?? 0) % n) + n) % n];
+              const camSteps = Math.round(((cam.rot ?? 0) / (Math.PI * 2)) * n);
+              const frame = model.frames[((((b.rot ?? 0) - camSteps) % n) + n) % n];
               const ds = (TILE_W * 0.98 * cam.zoom) / model.footFrac;
               ctx!.drawImage(frame, s.x - model.base.x * ds, groundY - model.base.y * ds, ds, ds);
             } else if (img) {
@@ -377,7 +397,7 @@ export function GameCanvas({
           }
         }
 
-        const iso = gridToIso(a.col, a.row);
+        const iso = gridToIso(a.col, a.row, cam.rot);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(a.art) ? loadImage(a.art) : null;
         const prov = PROVIDERS[a.provider];
@@ -422,7 +442,9 @@ export function GameCanvas({
         });
       }
 
-      draws.sort((p, q) => p.depth - q.depth || p.y - q.y);
+      // Painter's order by projected screen-Y so depth stays correct at any
+      // view yaw (objects lower on screen are nearer the camera, drawn last).
+      draws.sort((p, q) => p.y - q.y || p.depth - q.depth);
       draws.forEach((d) => d.fn());
 
       raf = requestAnimationFrame(frame);
@@ -517,7 +539,7 @@ export function GameCanvas({
       let pickedAgent: string | null = null;
       let bestD = 42;
       for (const a of agents.current) {
-        const iso = gridToIso(a.col, a.row);
+        const iso = gridToIso(a.col, a.row, cam.rot);
         const s = isoToScreen(iso.x, iso.y, cam, canvas!.clientWidth, canvas!.clientHeight);
         const d = Math.hypot(s.x - p.x, s.y - (p.y + 20));
         if (d < bestD) {
@@ -562,9 +584,19 @@ export function GameCanvas({
       if (b) cbRef.current.onContextBuilding(b, e.clientX, e.clientY);
     }
 
+    // Q / E orbit the view (yaw only).
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const k = e.key.toLowerCase();
+      if (k === "q") camRef.current.rotTarget = (camRef.current.rotTarget ?? 0) - Math.PI / 4;
+      else if (k === "e") camRef.current.rotTarget = (camRef.current.rotTarget ?? 0) + Math.PI / 4;
+    }
+
     canvas.addEventListener("mousedown", onDown);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("keydown", onKey);
     canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("contextmenu", onContext);
 
@@ -574,6 +606,7 @@ export function GameCanvas({
       canvas.removeEventListener("mousedown", onDown);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("keydown", onKey);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("contextmenu", onContext);
     };
@@ -582,7 +615,28 @@ export function GameCanvas({
   // Plain arrow pointer for navigation (no grab "hand"); a crosshair while
   // actively placing / moving a building or painting roads.
   const cursor = placingActive || movingId || roadTool ? "cursor-crosshair" : "cursor-default";
-  return <canvas ref={canvasRef} className={`block h-full w-full ${cursor}`} />;
+  return (
+    <>
+      <canvas ref={canvasRef} className={`block h-full w-full ${cursor}`} />
+      {/* Orbit controls (yaw only) — also Q / E on the keyboard. */}
+      <div className="pointer-events-none absolute right-4 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
+        <button
+          onClick={() => rotateView(-1)}
+          title="Rotate left (Q)"
+          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-2xl border border-black/5 bg-[#F0F4E1]/95 text-xl shadow-md transition hover:-translate-y-0.5 hover:bg-[#F6F8E8]"
+        >
+          ⟲
+        </button>
+        <button
+          onClick={() => rotateView(1)}
+          title="Rotate right (E)"
+          className="pointer-events-auto grid h-11 w-11 place-items-center rounded-2xl border border-black/5 bg-[#F0F4E1]/95 text-xl shadow-md transition hover:-translate-y-0.5 hover:bg-[#F6F8E8]"
+        >
+          ⟳
+        </button>
+      </div>
+    </>
+  );
 }
 
 function clamp(v: number, lo: number, hi: number) {

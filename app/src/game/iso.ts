@@ -9,13 +9,29 @@ export interface Camera {
   x: number; // screen-space pan offset
   y: number;
   zoom: number;
+  rot?: number; // current view yaw (radians); orbits around the grid centre
+  rotTarget?: number; // eased-towards target yaw
 }
 
-// Grid cell (col,row) -> isometric screen point (before camera/zoom applied).
-export function gridToIso(col: number, row: number) {
+const CENTER = (GRID - 1) / 2; // grid is rotated about its middle
+
+// Grid cell (col,row) -> isometric point. `rot` orbits the ground plane around
+// the grid centre BEFORE the iso projection (so it's a yaw orbit, not a flat
+// image spin — buildings stay upright while the layout turns).
+export function gridToIso(col: number, row: number, rot = 0) {
+  let x = col - CENTER;
+  let y = row - CENTER;
+  if (rot) {
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    const rx = x * cos - y * sin;
+    const ry = x * sin + y * cos;
+    x = rx;
+    y = ry;
+  }
   return {
-    x: (col - row) * (TILE_W / 2),
-    y: (col + row) * (TILE_H / 2),
+    x: (x - y) * (TILE_W / 2),
+    y: (x + y) * (TILE_H / 2),
   };
 }
 
@@ -27,15 +43,24 @@ export function isoToScreen(isoX: number, isoY: number, cam: Camera, cw: number,
   };
 }
 
-// Convert a screen click back to the grid cell under it. gridToIso places each
-// tile at its DIAMOND CENTER, so we pick the nearest tile by rounding (not
-// flooring — flooring snaps to a corner and lands half a tile off).
+// Convert a screen click back to the grid cell under it — the exact inverse of
+// gridToIso (un-project, un-rotate, un-centre). Rounds to the nearest tile
+// centre (flooring would snap to a corner and land half a tile off).
 export function screenToGrid(sx: number, sy: number, cam: Camera, cw: number, ch: number) {
   const ix = (sx - cam.x - cw / 2) / cam.zoom;
   const iy = (sy - cam.y - ch / 2) / cam.zoom;
-  const col = (ix / (TILE_W / 2) + iy / (TILE_H / 2)) / 2;
-  const row = (iy / (TILE_H / 2) - ix / (TILE_W / 2)) / 2;
-  return { col: Math.round(col), row: Math.round(row) };
+  let x = (ix / (TILE_W / 2) + iy / (TILE_H / 2)) / 2;
+  let y = (iy / (TILE_H / 2) - ix / (TILE_W / 2)) / 2;
+  const rot = cam.rot ?? 0;
+  if (rot) {
+    const cos = Math.cos(-rot);
+    const sin = Math.sin(-rot);
+    const rx = x * cos - y * sin;
+    const ry = x * sin + y * cos;
+    x = rx;
+    y = ry;
+  }
+  return { col: Math.round(x + CENTER), row: Math.round(y + CENTER) };
 }
 
 // --- Image cache (client only) ---

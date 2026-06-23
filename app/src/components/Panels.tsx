@@ -73,10 +73,10 @@ function CenterModal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center p-3 sm:p-6">
+    <div className="absolute inset-0 z-40 flex items-center justify-center p-2 sm:p-5">
       <div className="absolute inset-0 bg-[#0b0d14]/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative z-10 flex h-[min(660px,90vh)] w-[min(540px,96vw)] animate-[popIn_.18s_ease-out] flex-col overflow-hidden rounded-[28px] border border-white/12 bg-[#0f1118] shadow-2xl"
+        className="relative z-10 flex h-[94vh] w-[min(1080px,97vw)] animate-[popIn_.18s_ease-out] flex-col overflow-hidden rounded-[24px] border border-white/12 bg-[#0f1118] shadow-2xl"
         style={{ boxShadow: `0 30px 90px -10px ${accent}66, 0 0 0 1px #ffffff14` }}
       >
         {children}
@@ -658,27 +658,29 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
             <span className="text-[11px] text-white/45">{titleFromMessages(msgs)}</span>
             <button onClick={newChat} className="rounded-lg bg-white/8 px-2.5 py-1 text-[11px] font-semibold text-white/75 hover:bg-white/15">+ New chat</button>
           </div>
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-            {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
-                <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm" style={m.from === "user" ? { background: def.color, color: def.ink } : { background: "#ffffff12", color: "#f1f1f4" }}>
-                  {m.text}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+              {msgs.map((m, i) => (
+                <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed" style={m.from === "user" ? { background: def.color, color: def.ink } : { background: "#ffffff12", color: "#f1f1f4" }}>
+                    {m.text}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {busy && <div className="text-xs text-white/40">{agentName} is typing…</div>}
+              ))}
+              {busy && <div className="text-xs text-white/40">{agentName} is typing…</div>}
+            </div>
           </div>
-          <div className="border-t border-white/10 p-3">
-            <div className="flex items-end gap-2">
+          <div className="border-t border-white/10 px-4 py-3">
+            <div className="mx-auto flex w-full max-w-3xl items-end gap-2">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                 rows={1}
                 placeholder={`Message ${agentName}…`}
-                className="max-h-28 flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/25"
+                className="max-h-40 flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-white/25"
               />
-              <button onClick={send} disabled={busy} className="rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50" style={{ background: def.color, color: def.ink }}>Send</button>
+              <button onClick={send} disabled={busy} className="rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50" style={{ background: def.color, color: def.ink }}>Send</button>
             </div>
             {!live && <p className="mt-2 text-center text-[11px] text-white/35">Demo mode · add an API key in {def.name}'s settings for live replies</p>}
           </div>
