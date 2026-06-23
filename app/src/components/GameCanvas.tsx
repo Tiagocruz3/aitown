@@ -254,29 +254,12 @@ export function GameCanvas({
         }
       }
 
-      // road layer — flat diamonds with a dashed centre line, drawn on the ground
+      // road layer — flat tiles, no centre-line markings
       const roadSet = roads.current;
       if (roadSet.size) {
         for (const key of roadSet) {
           const [cs, rs] = key.split(",");
-          const c = Number(cs);
-          const r = Number(rs);
-          drawTile(c, r, cam, cw, ch, ROAD.fill);
-          // centre dash markings (only readable when zoomed in)
-          if (cam.zoom > 0.7) {
-            const iso = gridToIso(c, r, cam.rot);
-            const ctr = isoToScreen(iso.x, iso.y, cam, cw, ch);
-            ctx!.save();
-            ctx!.strokeStyle = ROAD.dash;
-            ctx!.lineWidth = Math.max(1.5, 2.5 * cam.zoom);
-            ctx!.setLineDash([6 * cam.zoom, 6 * cam.zoom]);
-            const hw = (TILE_W / 2) * cam.zoom;
-            ctx!.beginPath();
-            ctx!.moveTo(ctr.x - hw * 0.5, ctr.y);
-            ctx!.lineTo(ctr.x + hw * 0.5, ctr.y);
-            ctx!.stroke();
-            ctx!.restore();
-          }
+          drawTile(Number(cs), Number(rs), cam, cw, ch, ROAD.fill);
         }
       }
 
