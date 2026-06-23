@@ -39,6 +39,8 @@ export function Game() {
   const [dockPath, setDockPath] = useState<string[]>([]);
   // Full-screen management/catalog view (Workforce, Marketplace, …) or null.
   const [fullscreen, setFullscreen] = useState<DockKind | null>(null);
+  // Empty tile the user clicked — highlights the square AND opens the dock there.
+  const [pickedTile, setPickedTile] = useState<{ col: number; row: number } | null>(null);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<(ConfirmSpec & { onConfirm: () => void }) | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -181,12 +183,14 @@ export function Game() {
     setMovingId(null);
     setPlacing({ kind: "provider", provider: p });
     setDockPath([]);
+    setPickedTile(null);
   }
   function startPlacingTownHall() {
     setRoadTool(null);
     setMovingId(null);
     setPlacing({ kind: "town-hall" });
     setDockPath([]);
+    setPickedTile(null);
   }
   function chooseRoadTool(t: RoadTool | null) {
     setPlacing(null);
@@ -204,6 +208,7 @@ export function Game() {
   function startMoving(b: PlacedBuilding) {
     setPlacing(null);
     setRoadTool(null);
+    setPickedTile(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
     setMovingId(b.id);
@@ -299,11 +304,23 @@ export function Game() {
     showToast(`${PROVIDERS[b.provider].name} duplicated`);
   }
 
+  // Clicking an empty tile highlights it AND opens the dock there. Clicking
+  // off the grid (or another action) clears it, which hides the dock again.
+  function pickTile(cell: { col: number; row: number } | null) {
+    if (cell) {
+      setPickedTile(cell);
+    } else {
+      setPickedTile(null);
+      setDockPath([]);
+    }
+  }
+
   // Clicking a building on the map just SELECTS it — the dock turns into that
   // building's command center (Configure / Move / Duplicate / Delete …). The
   // full settings panel only opens via the dock's "Configure" action.
   function selectBuilding(b: PlacedBuilding) {
     setDockPath([]);
+    setPickedTile(null);
     setFullscreen(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
@@ -314,6 +331,7 @@ export function Game() {
   // Open a roomy full-screen management screen (Workforce, Marketplace, …).
   function openFullscreen(kind: DockKind) {
     setDockPath([]);
+    setPickedTile(null);
     setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
@@ -324,6 +342,7 @@ export function Game() {
   // open a building (route town-hall to its own panel); resets the dock
   function openBuildingById(b: PlacedBuilding) {
     setDockPath([]);
+    setPickedTile(null);
     setFullscreen(null);
     setSelectedId(b.id);
     if (b.kind === "town-hall") {
@@ -337,6 +356,7 @@ export function Game() {
 
   function openAgentById(id: string) {
     setDockPath([]);
+    setPickedTile(null);
     setFullscreen(null);
     setSelectedId(null);
     setOpenBuilding(null);
@@ -375,12 +395,13 @@ export function Game() {
         placingActive={!!placing}
         roadTool={roadTool}
         movingId={movingId}
-        selectedTile={selected ? { col: selected.col, row: selected.row } : null}
+        selectedTile={selected ? { col: selected.col, row: selected.row } : pickedTile}
         onPlace={place}
         onPaintRoad={paintRoad}
         onMoveTo={moveTo}
         onPickBuilding={selectBuilding}
         onPickAgent={openAgentById}
+        onPickTile={pickTile}
         onDeselect={() => setSelectedId(null)}
         onContextBuilding={(b, x, y) => setCtx({ b, x, y })}
       />
@@ -401,7 +422,7 @@ export function Game() {
       </div>
 
       {/* empty-state hint */}
-      {buildings.length === 0 && !placing && dockPath.length === 0 && !selected && !fullscreen && (
+      {buildings.length === 0 && !placing && dockPath.length === 0 && !selected && !fullscreen && !pickedTile && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="pointer-events-auto rounded-3xl border border-white/15 bg-black/45 px-6 py-5 backdrop-blur-md">
             <div className="text-3xl">🏗️</div>
@@ -464,10 +485,10 @@ export function Game() {
         </div>
       )}
 
-      {/* ===== Dynamic dock — fixed-size game toolbar with menu-stack nav ===== */}
-      {/* While moving a building the dock collapses to the main menu so the */}
-      {/* map stays the focus; a selected building turns it into a command center. */}
-      {!movingId && !fullscreen && (
+      {/* ===== Dynamic dock — only appears when a square is highlighted ===== */}
+      {/* Click an empty tile to open it at root, or a building for its command */}
+      {/* center; otherwise the bottom stays clear. */}
+      {!movingId && !fullscreen && (selected || pickedTile || dockPath.length > 0) && (
         <Dock
           path={dockPath}
           onNavigate={navigateDock}

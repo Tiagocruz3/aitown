@@ -62,6 +62,7 @@ interface Props {
   onMoveTo: (id: string, col: number, row: number) => void;
   onPickBuilding: (b: PlacedBuilding) => void;
   onPickAgent: (id: string) => void;
+  onPickTile: (cell: { col: number; row: number } | null) => void;
   onDeselect: () => void;
   onContextBuilding: (b: PlacedBuilding, sx: number, sy: number) => void;
 }
@@ -79,6 +80,7 @@ export function GameCanvas({
   onMoveTo,
   onPickBuilding,
   onPickAgent,
+  onPickTile,
   onDeselect,
   onContextBuilding,
 }: Props) {
@@ -94,8 +96,6 @@ export function GameCanvas({
     cam.rot = next;
   }
   const hoverRef = useRef<{ col: number; row: number } | null>(null);
-  // Last empty tile the user clicked — highlighted for feedback.
-  const pickedCellRef = useRef<{ col: number; row: number } | null>(null);
   const dragRef = useRef<{ on: boolean; lx: number; ly: number; moved: boolean }>({
     on: false,
     lx: 0,
@@ -112,8 +112,8 @@ export function GameCanvas({
   roadToolRef.current = roadTool;
   movingRef.current = movingId;
   selectedTileRef.current = selectedTile;
-  const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding });
-  cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding };
+  const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onPickTile, onDeselect, onContextBuilding });
+  cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onPickTile, onDeselect, onContextBuilding };
 
   const buildingAt = useCallback((col: number, row: number) => {
     return buildingsRef.current.find((b) => b.col === col && b.row === row);
@@ -299,10 +299,9 @@ export function GameCanvas({
         drawTile(hov.col, hov.row, cam, cw, ch, fill, "rgba(255,255,255,0.9)");
       }
 
-      // Highlight the square under the currently selected building, or the last
-      // empty tile the user clicked (when not in a build/move/road flow).
-      const st = selectedTileRef.current;
-      const pc = st ?? pickedCellRef.current;
+      // Highlight the active square — the selected building's tile, or the
+      // empty tile the user clicked (which is also what opens the dock).
+      const pc = selectedTileRef.current;
       if (!buildMode && pc && pc.col >= 0 && pc.row >= 0 && pc.col < GRID && pc.row < GRID) {
         drawTile(pc.col, pc.row, cam, cw, ch, "rgba(255,255,255,0.22)", "rgba(255,255,255,0.95)");
       }
@@ -514,7 +513,7 @@ export function GameCanvas({
       // MOVE mode: relocate the building being moved to the clicked tile.
       // Only valid in-grid, unoccupied tiles — never off the terrain.
       if (movingRef.current) {
-        pickedCellRef.current = null;
+        cbRef.current.onPickTile(null);
         if (
           inGrid &&
           !buildingAt(cell.col, cell.row) &&
@@ -527,7 +526,7 @@ export function GameCanvas({
 
       // PLACE mode: drop a new building — only on a real terrain tile.
       if (placingActiveRef.current) {
-        pickedCellRef.current = null;
+        cbRef.current.onPickTile(null);
         if (
           inGrid &&
           !buildingAt(cell.col, cell.row) &&
@@ -551,7 +550,7 @@ export function GameCanvas({
         }
       }
       if (pickedAgent) {
-        pickedCellRef.current = null;
+        cbRef.current.onPickTile(null);
         cbRef.current.onPickAgent(pickedAgent);
         return;
       }
@@ -561,11 +560,11 @@ export function GameCanvas({
         buildingAtScreen(p.x, p.y, cam, canvas!.clientWidth, canvas!.clientHeight) ??
         (inGrid ? buildingAt(cell.col, cell.row) : undefined);
       if (b) {
-        pickedCellRef.current = null;
+        cbRef.current.onPickTile(null);
         cbRef.current.onPickBuilding(b);
       } else {
-        // Clicked empty ground — highlight that tile (only if it's real terrain).
-        pickedCellRef.current = inGrid ? { col: cell.col, row: cell.row } : null;
+        // Clicked empty ground — highlight that tile and open the dock there.
+        cbRef.current.onPickTile(inGrid ? { col: cell.col, row: cell.row } : null);
         cbRef.current.onDeselect();
       }
     }
