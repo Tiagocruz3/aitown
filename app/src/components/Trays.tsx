@@ -156,8 +156,8 @@ function DockBar({
         </div>
       )}
 
-      {/* the dock — fixed height, horizontal scroll on overflow, never grows up */}
-      <div className="pointer-events-auto flex max-w-[96vw] items-end gap-2 overflow-x-auto rounded-[26px] border border-black/5 bg-[#11131c]/55 p-2 backdrop-blur-md">
+      {/* the dock — individual floating cards (no unifying background) */}
+      <div className="pointer-events-auto flex max-w-[98vw] items-end gap-2.5 overflow-x-auto px-1 pb-1">
         {onBack && (
           <DockTile
             item={{ id: "__back", label: "Back", emoji: "⬅️", accent: "#94a3b8" }}
@@ -179,10 +179,10 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
       onClick={onClick}
       disabled={disabled}
       title={item.desc ?? label}
-      className="group flex w-[62px] shrink-0 flex-col items-center gap-0.5"
+      className="group flex w-[80px] shrink-0 flex-col items-center gap-1"
     >
       <div
-        className={`relative grid h-[54px] w-[54px] place-items-center rounded-[16px] border shadow-md transition ${
+        className={`relative grid h-[72px] w-[72px] place-items-center rounded-[20px] border shadow-lg transition ${
           disabled
             ? "cursor-not-allowed border-black/5 bg-[#e7eadb]/60 opacity-55"
             : danger
@@ -200,7 +200,7 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
         )}
         <Glyph emoji={emoji} icon={icon} art={art} />
       </div>
-      <span className="w-full truncate text-center text-[10px] font-semibold text-white drop-shadow">
+      <span className="w-full truncate text-center text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
         {label}
       </span>
     </button>
@@ -210,9 +210,9 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
 function Glyph({ emoji, icon, art }: { emoji?: string; icon?: string; art?: string }) {
   const src = art ?? icon;
   if (src) {
-    return <BrandImg src={src} alt="" className="h-[40px] w-[40px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]" />;
+    return <BrandImg src={src} alt="" className="h-[54px] w-[54px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]" />;
   }
-  return <span className="text-2xl">{emoji}</span>;
+  return <span className="text-3xl">{emoji}</span>;
 }
 
 /* ---- Menu tree ----------------------------------------------------------- */

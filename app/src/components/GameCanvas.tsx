@@ -85,10 +85,13 @@ export function GameCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const camRef = useRef<Camera>({ x: 0, y: 40, zoom: 0.85, rot: 0, rotTarget: 0 });
 
-  // Orbit the view by 45° steps (eased in the frame loop). Yaw only.
+  // Orbit the view by 90° steps. In a 2:1 iso projection only quarter-turns
+  // keep the grid a proper square diamond (45° would skew it), so we snap.
   function rotateView(dir: number) {
     const cam = camRef.current;
-    cam.rotTarget = (cam.rotTarget ?? 0) + dir * (Math.PI / 4);
+    const next = (cam.rotTarget ?? 0) + dir * (Math.PI / 2);
+    cam.rotTarget = next;
+    cam.rot = next;
   }
   const hoverRef = useRef<{ col: number; row: number } | null>(null);
   // Last empty tile the user clicked — highlighted for feedback.
@@ -589,8 +592,11 @@ export function GameCanvas({
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       const k = e.key.toLowerCase();
-      if (k === "q") camRef.current.rotTarget = (camRef.current.rotTarget ?? 0) - Math.PI / 4;
-      else if (k === "e") camRef.current.rotTarget = (camRef.current.rotTarget ?? 0) + Math.PI / 4;
+      if (k !== "q" && k !== "e") return;
+      const cam = camRef.current;
+      const next = (cam.rotTarget ?? 0) + (k === "q" ? -1 : 1) * (Math.PI / 2);
+      cam.rotTarget = next;
+      cam.rot = next;
     }
 
     canvas.addEventListener("mousedown", onDown);
