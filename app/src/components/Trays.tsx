@@ -139,7 +139,10 @@ function DockBar({
   onBack?: () => void;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-2 px-3 pb-3">
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-1.5 px-3"
+      style={{ paddingBottom: "calc(0.85rem + env(safe-area-inset-bottom, 0px))" }}
+    >
       {/* breadcrumb — small, floats above the dock, never covers the map */}
       {crumbs.length > 0 && (
         <div className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[11px] font-semibold text-white/85 backdrop-blur-md">
@@ -176,10 +179,10 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
       onClick={onClick}
       disabled={disabled}
       title={item.desc ?? label}
-      className="group flex w-[76px] shrink-0 flex-col items-center gap-1"
+      className="group flex w-[62px] shrink-0 flex-col items-center gap-0.5"
     >
       <div
-        className={`relative grid h-[68px] w-[68px] place-items-center rounded-[20px] border shadow-md transition ${
+        className={`relative grid h-[54px] w-[54px] place-items-center rounded-[16px] border shadow-md transition ${
           disabled
             ? "cursor-not-allowed border-black/5 bg-[#e7eadb]/60 opacity-55"
             : danger
@@ -197,7 +200,7 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
         )}
         <Glyph emoji={emoji} icon={icon} art={art} />
       </div>
-      <span className="w-full truncate text-center text-[11px] font-semibold text-white drop-shadow">
+      <span className="w-full truncate text-center text-[10px] font-semibold text-white drop-shadow">
         {label}
       </span>
     </button>
@@ -207,9 +210,9 @@ function DockTile({ item, onClick }: { item: DockItem; onClick?: () => void }) {
 function Glyph({ emoji, icon, art }: { emoji?: string; icon?: string; art?: string }) {
   const src = art ?? icon;
   if (src) {
-    return <BrandImg src={src} alt="" className="h-[52px] w-[52px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]" />;
+    return <BrandImg src={src} alt="" className="h-[40px] w-[40px] object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.25)]" />;
   }
-  return <span className="text-3xl">{emoji}</span>;
+  return <span className="text-2xl">{emoji}</span>;
 }
 
 /* ---- Menu tree ----------------------------------------------------------- */

@@ -11,7 +11,7 @@ import {
   type Camera,
 } from "../game/iso";
 import { PROVIDERS, ROAD, TOWN_HALL, BUILDING_MODELS, type ProviderId } from "../game/data";
-import { ensureModel, getModelFrames } from "../game/model3d";
+import { ensureModel, getModel } from "../game/model3d";
 
 export type BuildingKind = "provider" | "town-hall";
 
@@ -273,23 +273,24 @@ export function GameCanvas({
         const iso = gridToIso(b.col, b.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(bArt) ? loadImage(bArt) : null;
-        // Rotatable 3D model frames (if this building has a GLB) — falls back to
-        // the 2D sprite while the model is still rendering.
+        // Rotatable 3D model (if this building has a GLB) — falls back to the
+        // 2D sprite while the model is still rendering.
         const modelUrl = b.kind === "provider" ? BUILDING_MODELS[b.provider] : undefined;
-        const frames = modelUrl ? getModelFrames(modelUrl) : null;
+        const model = modelUrl ? getModel(modelUrl) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const isMoving = movingRef.current === b.id;
         draws.push({
           depth: b.col + b.row,
           y: s.y,
           fn: () => {
-            // soft grounded shadow, sized to the tile and sat under the base
-            const baseY = s.y + TILE_H * 0.5 * cam.zoom;
+            // 3D models are grounded at the tile CENTER (like agents); 2D
+            // sprites sit toward the tile's front to look planted.
+            const groundY = model ? s.y : s.y + TILE_H * 0.5 * cam.zoom;
             ctx!.save();
             ctx!.globalAlpha = 0.22;
             ctx!.fillStyle = "#10300f";
             ctx!.beginPath();
-            ctx!.ellipse(s.x, baseY, TILE_W * 0.46 * cam.zoom, TILE_H * 0.42 * cam.zoom, 0, 0, Math.PI * 2);
+            ctx!.ellipse(s.x, groundY, TILE_W * 0.46 * cam.zoom, TILE_H * 0.42 * cam.zoom, 0, 0, Math.PI * 2);
             ctx!.fill();
             ctx!.restore();
             // moving highlight ring
@@ -307,17 +308,16 @@ export function GameCanvas({
             }
             ctx!.save();
             if (isMoving) ctx!.globalAlpha = 0.65;
-            if (frames && frames.length) {
-              // 3D model sprite for the current rotation (square frame).
-              const n = frames.length;
-              const frame = frames[(((b.rot ?? 0) % n) + n) % n];
-              const ds = TILE_W * 2.4 * cam.zoom; // draw size (model is inset in the frame)
-              ctx!.drawImage(frame, s.x - ds / 2, baseY - ds + ds * 0.08, ds, ds);
+            if (model) {
+              // Size the frame so the model's footprint ≈ one tile wide, and
+              // anchor its projected base-center exactly on the tile center.
+              const n = model.frames.length;
+              const frame = model.frames[(((b.rot ?? 0) % n) + n) % n];
+              const ds = (TILE_W * 0.98 * cam.zoom) / model.footFrac;
+              ctx!.drawImage(frame, s.x - model.base.x * ds, groundY - model.base.y * ds, ds, ds);
             } else if (img) {
               const h = w * (img.height / img.width);
-              // Sit the building's base toward the front of its tile (baseY) so
-              // it looks grounded on the shadow rather than floating above it.
-              ctx!.drawImage(img, s.x - w / 2, baseY - h, w, h);
+              ctx!.drawImage(img, s.x - w / 2, groundY - h, w, h);
             } else {
               ctx!.fillStyle = bColor;
               ctx!.fillRect(s.x - w / 4, s.y - w * 0.6, w / 2, w * 0.6);
