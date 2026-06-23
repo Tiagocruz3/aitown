@@ -8,7 +8,7 @@ import {
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
-import { ContextMenu } from "./Modals";
+import { ContextMenu, ConfirmModal, type ConfirmSpec } from "./Modals";
 import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
@@ -40,6 +40,7 @@ export function Game() {
   // Full-screen management/catalog view (Workforce, Marketplace, …) or null.
   const [fullscreen, setFullscreen] = useState<DockKind | null>(null);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<(ConfirmSpec & { onConfirm: () => void }) | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
@@ -244,6 +245,32 @@ export function Game() {
       );
   }
 
+  // Ask for confirmation via the in-game modal (no native confirm() popups).
+  function confirmRemoveBuilding(b: PlacedBuilding) {
+    const isHall = b.kind === "town-hall";
+    const name = isHall ? "Town Hall" : PROVIDERS[b.provider].name;
+    setConfirmDialog({
+      title: `Remove ${name}?`,
+      message: isHall
+        ? "This removes your OS control center from the town."
+        : `This dismisses ${agentNameOf(b.provider)} and removes ${name} from the town.`,
+      confirmLabel: "Remove",
+      danger: true,
+      onConfirm: () => deleteBuilding(b),
+    });
+  }
+
+  function confirmClearRoads() {
+    if (roadCount === 0) return;
+    setConfirmDialog({
+      title: "Clear all roads?",
+      message: `This removes all ${roadCount} road tile${roadCount === 1 ? "" : "s"} from the town.`,
+      confirmLabel: "Clear all",
+      danger: true,
+      onConfirm: clearRoads,
+    });
+  }
+
   function duplicateBuilding(b: PlacedBuilding) {
     if (b.kind === "town-hall") {
       showToast("Only one Town Hall allowed");
@@ -443,15 +470,12 @@ export function Game() {
           onPlaceProvider={startPlacingProvider}
           onPlaceTownHall={startPlacingTownHall}
           onRoadTool={chooseRoadTool}
-          onClearRoads={clearRoads}
+          onClearRoads={confirmClearRoads}
           onOpenFullscreen={openFullscreen}
           onOpenBuilding={openBuildingById}
           onMoveBuilding={startMoving}
           onDuplicateBuilding={duplicateBuilding}
-          onDeleteBuilding={(b) => {
-            const name = b.kind === "town-hall" ? "Town Hall" : PROVIDERS[b.provider].name;
-            if (confirm(`Remove ${name}?`)) deleteBuilding(b);
-          }}
+          onDeleteBuilding={confirmRemoveBuilding}
           onChatBuilding={(b) => openAgentByProvider(b.provider)}
           onDeselect={() => setSelectedId(null)}
         />
@@ -475,7 +499,7 @@ export function Game() {
           onClose={() => setOpenBuilding(null)}
           onToast={showToast}
           onMove={() => startMoving(openBuilding)}
-          onDelete={() => deleteBuilding(openBuilding)}
+          onDelete={() => confirmRemoveBuilding(openBuilding)}
           onChat={() => openAgentByProvider(openBuilding.provider)}
           onSaved={syncAgentNames}
         />
@@ -487,7 +511,7 @@ export function Game() {
           onClose={() => setOpenTownHall(null)}
           onOpenAgent={(id) => openAgentById(id)}
           onMove={() => startMoving(openTownHall)}
-          onDelete={() => deleteBuilding(openTownHall)}
+          onDelete={() => confirmRemoveBuilding(openTownHall)}
         />
       )}
       {openAgentProvider && (
@@ -504,14 +528,14 @@ export function Game() {
               ? [
                   { label: "Open", onClick: () => openBuildingById(ctx.b) },
                   { label: "Move", onClick: () => startMoving(ctx.b) },
-                  { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
+                  { label: "Remove", danger: true, onClick: () => confirmRemoveBuilding(ctx.b) },
                 ]
               : [
                   { label: "Open settings", onClick: () => openBuildingById(ctx.b) },
                   { label: "Chat with agent", onClick: () => openAgentByProvider(ctx.b.provider) },
                   { label: "Move", onClick: () => startMoving(ctx.b) },
                   { label: "Duplicate", onClick: () => duplicateBuilding(ctx.b) },
-                  { label: "Remove", danger: true, onClick: () => deleteBuilding(ctx.b) },
+                  { label: "Remove", danger: true, onClick: () => confirmRemoveBuilding(ctx.b) },
                 ]
           }
         />
@@ -521,6 +545,17 @@ export function Game() {
         <div className="absolute left-1/2 top-32 z-30 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-sm text-white shadow-lg">
           {toast}
         </div>
+      )}
+
+      {confirmDialog && (
+        <ConfirmModal
+          {...confirmDialog}
+          onConfirm={() => {
+            confirmDialog.onConfirm();
+            setConfirmDialog(null);
+          }}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );

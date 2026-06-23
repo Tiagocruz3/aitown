@@ -189,7 +189,7 @@ export function BuildingPanel({
         </button>
         <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move</button>
         <button
-          onClick={() => { if (confirm(`Remove ${def.name}? This dismisses ${cfg.agentName}.`)) onDelete(); }}
+          onClick={onDelete}
           className="ml-auto rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20"
         >🗑</button>
       </div>
@@ -480,7 +480,7 @@ export function TownHallPanel({
             {tab === "System Settings" && (
               <div className="mt-3 flex items-center justify-between gap-2">
                 <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move Town Hall</button>
-                <button onClick={() => { if (confirm("Remove the Town Hall?")) onDelete(); }} className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20">🗑 Remove</button>
+                <button onClick={onDelete} className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20">🗑 Remove</button>
               </div>
             )}
           </div>
