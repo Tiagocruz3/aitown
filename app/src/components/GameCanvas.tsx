@@ -205,12 +205,23 @@ export function GameCanvas({
       ctx!.fillStyle = g;
       ctx!.fillRect(0, 0, cw, ch);
 
-      for (let r = 0; r < GRID; r++) {
-        for (let c = 0; c < GRID; c++) {
-          const even = (r + c) % 2 === 0;
-          drawTile(c, r, cam, cw, ch, even ? "#8ed16a" : "#83c861", "rgba(60,120,40,0.18)");
-        }
-      }
+      // The terrain as a single flat field (no per-tile borders / checkerboard,
+      // so it doesn't read like a chess board). Individual squares only show
+      // when highlighted (clicked, or while building).
+      const hw = TILE_W / 2;
+      const hh = TILE_H / 2;
+      const corners = [
+        { x: 0, y: -hh }, // north
+        { x: GRID * hw, y: (GRID - 1) * hh }, // east
+        { x: 0, y: (2 * GRID - 1) * hh }, // south
+        { x: -GRID * hw, y: (GRID - 1) * hh }, // west
+      ].map((p) => isoToScreen(p.x, p.y, cam, cw, ch));
+      ctx!.beginPath();
+      ctx!.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i++) ctx!.lineTo(corners[i].x, corners[i].y);
+      ctx!.closePath();
+      ctx!.fillStyle = "#8ccf68";
+      ctx!.fill();
 
       // road layer — flat diamonds with a dashed centre line, drawn on the ground
       const roadSet = roads.current;
