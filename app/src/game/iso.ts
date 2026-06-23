@@ -1,8 +1,8 @@
 // Isometric engine helpers — pure math + an image cache. SSR-safe (no DOM at
 // module top level; the Image cache lazily no-ops on the server).
 
-export const TILE_W = 128; // full diamond width in px (at zoom 1)
-export const TILE_H = 64; // full diamond height in px (at zoom 1)
+export const TILE_W = 168; // full diamond width in px (at zoom 1)
+export const TILE_H = 84; // full diamond height in px (at zoom 1) — kept 2:1
 export const GRID = 16; // grid is GRID x GRID tiles
 
 export interface Camera {

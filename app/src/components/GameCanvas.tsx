@@ -650,9 +650,9 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 // How much of a tile a 3D building footprint should fill (1.0 ≈ one square).
-// footFrac is the model's circumscribed circle, ~1.4× its base, so >1 makes
-// the visible base roughly fill the tile. Tune this to taste.
-const MODEL_TILE_FILL = 1.45;
+// footFrac is the model's circumscribed circle, ~1.4× its base. Lowered to
+// leave margin so buildings sit comfortably inside the (now larger) tiles.
+const MODEL_TILE_FILL = 1.12;
 
 // Organic grass: a small palette of close greens, picked deterministically per
 // tile (so it's randomly scattered but stable across frames — no flicker).
