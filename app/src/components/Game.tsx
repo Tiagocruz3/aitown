@@ -141,6 +141,29 @@ export function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildings]);
 
+  // Keep zoom on the CANVAS only — never zoom the page, so the fixed HUD can't
+  // drift out of the visible (visual) viewport. Block ctrl+wheel zoom, Safari
+  // pinch gestures, and ctrl +/-/0 keyboard zoom.
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
+    const onGesture = (e: Event) => e.preventDefault();
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && ["+", "-", "=", "0"].includes(e.key)) e.preventDefault();
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("gesturestart", onGesture as EventListener);
+    window.addEventListener("gesturechange", onGesture as EventListener);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("gesturestart", onGesture as EventListener);
+      window.removeEventListener("gesturechange", onGesture as EventListener);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   function showToast(t: string) {
     setToast(t);
     window.clearTimeout((showToast as unknown as { _t?: number })._t);
@@ -387,7 +410,7 @@ export function Game() {
     : null;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#8fd3ff] select-none">
+    <div className="fixed inset-0 overflow-hidden bg-[#8fd3ff] select-none" style={{ touchAction: "none" }}>
       <GameCanvas
         buildings={buildings}
         agents={agents}
