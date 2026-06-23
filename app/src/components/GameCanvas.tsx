@@ -56,6 +56,7 @@ interface Props {
   placingActive: boolean;
   roadTool: RoadTool | null;
   movingId: string | null;
+  selectedTile: { col: number; row: number } | null;
   onPlace: (col: number, row: number) => void;
   onPaintRoad: (col: number, row: number, erase: boolean) => void;
   onMoveTo: (id: string, col: number, row: number) => void;
@@ -72,6 +73,7 @@ export function GameCanvas({
   placingActive,
   roadTool,
   movingId,
+  selectedTile,
   onPlace,
   onPaintRoad,
   onMoveTo,
@@ -95,10 +97,12 @@ export function GameCanvas({
   const buildingsRef = useRef(buildings);
   const roadToolRef = useRef(roadTool);
   const movingRef = useRef(movingId);
+  const selectedTileRef = useRef(selectedTile);
   placingActiveRef.current = placingActive;
   buildingsRef.current = buildings;
   roadToolRef.current = roadTool;
   movingRef.current = movingId;
+  selectedTileRef.current = selectedTile;
   const cbRef = useRef({ onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding });
   cbRef.current = { onPlace, onPaintRoad, onMoveTo, onPickBuilding, onPickAgent, onDeselect, onContextBuilding };
 
@@ -205,9 +209,10 @@ export function GameCanvas({
       ctx!.fillStyle = g;
       ctx!.fillRect(0, 0, cw, ch);
 
-      // The terrain as a single flat field (no per-tile borders / checkerboard,
-      // so it doesn't read like a chess board). Individual squares only show
-      // when highlighted (clicked, or while building).
+      // The terrain: a flat base field (fills any sub-pixel seams), then per-
+      // tile random green shades for organic texture — no borders, so it never
+      // reads like a chess board. Individual squares still only highlight on
+      // interaction.
       const hw = TILE_W / 2;
       const hh = TILE_H / 2;
       const corners = [
@@ -222,6 +227,12 @@ export function GameCanvas({
       ctx!.closePath();
       ctx!.fillStyle = "#8ccf68";
       ctx!.fill();
+
+      for (let r = 0; r < GRID; r++) {
+        for (let c = 0; c < GRID; c++) {
+          drawTile(c, r, cam, cw, ch, grassShade(c, r));
+        }
+      }
 
       // road layer — flat diamonds with a dashed centre line, drawn on the ground
       const roadSet = roads.current;
@@ -268,11 +279,12 @@ export function GameCanvas({
         drawTile(hov.col, hov.row, cam, cw, ch, fill, "rgba(255,255,255,0.9)");
       }
 
-      // Persistent highlight on the tile the user last clicked (when not in a
-      // build/move/road flow). Gives a clear "you selected this square" cue.
-      const pc = pickedCellRef.current;
+      // Highlight the square under the currently selected building, or the last
+      // empty tile the user clicked (when not in a build/move/road flow).
+      const st = selectedTileRef.current;
+      const pc = st ?? pickedCellRef.current;
       if (!buildMode && pc && pc.col >= 0 && pc.row >= 0 && pc.col < GRID && pc.row < GRID) {
-        drawTile(pc.col, pc.row, cam, cw, ch, "rgba(255,255,255,0.20)", "rgba(255,255,255,0.9)");
+        drawTile(pc.col, pc.row, cam, cw, ch, "rgba(255,255,255,0.22)", "rgba(255,255,255,0.95)");
       }
 
       type Draw = { depth: number; y: number; fn: () => void };
@@ -575,6 +587,15 @@ export function GameCanvas({
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+// Organic grass: a small palette of close greens, picked deterministically per
+// tile (so it's randomly scattered but stable across frames — no flicker).
+const GRASS_SHADES = ["#8ed16a", "#86c863", "#94d572", "#82c45e", "#8bce66", "#90d06d"];
+function grassShade(c: number, r: number): string {
+  const h = Math.sin(c * 127.1 + r * 311.7) * 43758.5453;
+  const f = h - Math.floor(h); // 0..1
+  return GRASS_SHADES[Math.floor(f * GRASS_SHADES.length) % GRASS_SHADES.length];
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

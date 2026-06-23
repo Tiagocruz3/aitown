@@ -376,6 +376,7 @@ export function Game() {
         placingActive={!!placing}
         roadTool={roadTool}
         movingId={movingId}
+        selectedTile={selected ? { col: selected.col, row: selected.row } : null}
         onPlace={place}
         onPaintRoad={paintRoad}
         onMoveTo={moveTo}
