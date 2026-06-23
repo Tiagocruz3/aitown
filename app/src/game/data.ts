@@ -181,6 +181,12 @@ export const PROVIDER_ORDER: ProviderId[] = [
   "openrouter",
 ];
 
+// Providers whose building is rendered as a rotatable 3D GLB model on the map
+// (replacing the flat sprite). Served from app/public/ → /models/*.glb.
+export const BUILDING_MODELS: Partial<Record<ProviderId, string>> = {
+  openai: "/models/openai-hq.glb",
+};
+
 // ---- Dock -------------------------------------------------------------------
 
 // Town Star-style rendered dock icons (glossy 3D, transparent PNG, lightweight).

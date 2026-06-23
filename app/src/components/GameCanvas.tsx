@@ -10,7 +10,8 @@ import {
   isReady,
   type Camera,
 } from "../game/iso";
-import { PROVIDERS, ROAD, TOWN_HALL, type ProviderId } from "../game/data";
+import { PROVIDERS, ROAD, TOWN_HALL, BUILDING_MODELS, type ProviderId } from "../game/data";
+import { ensureModel, getModelFrames } from "../game/model3d";
 
 export type BuildingKind = "provider" | "town-hall";
 
@@ -20,6 +21,7 @@ export interface PlacedBuilding {
   provider: ProviderId; // meaningful when kind === "provider"
   col: number;
   row: number;
+  rot?: number; // rotation frame index for 3D-model buildings (default 0)
 }
 
 // Art + accent color for any building (provider or town hall).
@@ -157,6 +159,8 @@ export function GameCanvas({
     });
     loadImage(TOWN_HALL.art);
     agents.current.forEach((a) => loadImage(a.art));
+    // Pre-render any 3D building models into rotation frames (async, client-only).
+    Object.values(BUILDING_MODELS).forEach((url) => url && ensureModel(url));
 
     function drawTile(
       col: number,
@@ -269,6 +273,10 @@ export function GameCanvas({
         const iso = gridToIso(b.col, b.row);
         const s = isoToScreen(iso.x, iso.y, cam, cw, ch);
         const img = isReady(bArt) ? loadImage(bArt) : null;
+        // Rotatable 3D model frames (if this building has a GLB) — falls back to
+        // the 2D sprite while the model is still rendering.
+        const modelUrl = b.kind === "provider" ? BUILDING_MODELS[b.provider] : undefined;
+        const frames = modelUrl ? getModelFrames(modelUrl) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const isMoving = movingRef.current === b.id;
         draws.push({
@@ -299,7 +307,13 @@ export function GameCanvas({
             }
             ctx!.save();
             if (isMoving) ctx!.globalAlpha = 0.65;
-            if (img) {
+            if (frames && frames.length) {
+              // 3D model sprite for the current rotation (square frame).
+              const n = frames.length;
+              const frame = frames[(((b.rot ?? 0) % n) + n) % n];
+              const ds = TILE_W * 2.4 * cam.zoom; // draw size (model is inset in the frame)
+              ctx!.drawImage(frame, s.x - ds / 2, baseY - ds + ds * 0.08, ds, ds);
+            } else if (img) {
               const h = w * (img.height / img.width);
               // Sit the building's base toward the front of its tile (baseY) so
               // it looks grounded on the shadow rather than floating above it.

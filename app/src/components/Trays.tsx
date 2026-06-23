@@ -3,6 +3,7 @@ import {
   PROVIDERS,
   DOCK,
   BUILDING_LIBRARY,
+  BUILDING_MODELS,
   TOWN_HALL,
   type DockKind,
   type ProviderId,
@@ -49,6 +50,7 @@ export function Dock({
   onOpenFullscreen,
   onOpenBuilding,
   onMoveBuilding,
+  onRotateBuilding,
   onDuplicateBuilding,
   onDeleteBuilding,
   onChatBuilding,
@@ -67,6 +69,7 @@ export function Dock({
   onOpenFullscreen: (kind: DockKind) => void;
   onOpenBuilding: (b: PlacedBuilding) => void;
   onMoveBuilding: (b: PlacedBuilding) => void;
+  onRotateBuilding: (b: PlacedBuilding) => void;
   onDuplicateBuilding: (b: PlacedBuilding) => void;
   onDeleteBuilding: (b: PlacedBuilding) => void;
   onChatBuilding: (b: PlacedBuilding) => void;
@@ -78,6 +81,7 @@ export function Dock({
     const items = buildingActions(selected, {
       onOpenBuilding,
       onMoveBuilding,
+      onRotateBuilding,
       onDuplicateBuilding,
       onDeleteBuilding,
       onChatBuilding,
@@ -307,6 +311,7 @@ function buildingActions(
   h: {
     onOpenBuilding: (b: PlacedBuilding) => void;
     onMoveBuilding: (b: PlacedBuilding) => void;
+    onRotateBuilding: (b: PlacedBuilding) => void;
     onDuplicateBuilding: (b: PlacedBuilding) => void;
     onDeleteBuilding: (b: PlacedBuilding) => void;
     onChatBuilding: (b: PlacedBuilding) => void;
@@ -314,6 +319,7 @@ function buildingActions(
   },
 ): DockItem[] {
   const isHall = b.kind === "town-hall";
+  const is3D = b.kind === "provider" && !!BUILDING_MODELS[b.provider];
   const items: DockItem[] = [
     {
       id: "act-open",
@@ -326,6 +332,9 @@ function buildingActions(
     items.push({ id: "act-chat", label: "Chat", emoji: "💬", onSelect: () => h.onChatBuilding(b) });
   }
   items.push({ id: "act-move", label: "Move", emoji: "✋", onSelect: () => h.onMoveBuilding(b) });
+  if (is3D) {
+    items.push({ id: "act-rotate", label: "Rotate", emoji: "🔄", onSelect: () => h.onRotateBuilding(b) });
+  }
   items.push({ id: "act-upgrade", label: "Upgrade", emoji: "⬆️", badge: "soon", disabled: true });
   if (!isHall) {
     items.push({

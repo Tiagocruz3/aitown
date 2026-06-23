@@ -8,6 +8,7 @@ import {
 import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
+import { MODEL_FRAMES } from "../game/model3d";
 import { ContextMenu, ConfirmModal, type ConfirmSpec } from "./Modals";
 import { agentNameOf } from "../game/config";
 import {
@@ -271,6 +272,18 @@ export function Game() {
     });
   }
 
+  // Rotate a 3D-model building by one frame (and persist it).
+  function rotateBuilding(b: PlacedBuilding) {
+    setBuildings((arr) => {
+      const next = arr.map((x) =>
+        x.id === b.id ? { ...x, rot: ((x.rot ?? 0) + 1) % MODEL_FRAMES } : x,
+      );
+      persist(next);
+      return next;
+    });
+    bump();
+  }
+
   function duplicateBuilding(b: PlacedBuilding) {
     if (b.kind === "town-hall") {
       showToast("Only one Town Hall allowed");
@@ -474,6 +487,7 @@ export function Game() {
           onOpenFullscreen={openFullscreen}
           onOpenBuilding={openBuildingById}
           onMoveBuilding={startMoving}
+          onRotateBuilding={rotateBuilding}
           onDuplicateBuilding={duplicateBuilding}
           onDeleteBuilding={confirmRemoveBuilding}
           onChatBuilding={(b) => openAgentByProvider(b.provider)}
