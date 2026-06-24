@@ -655,18 +655,34 @@ export function AgentPanel({
     setMsgs(next);
     setBusy(true);
 
-    // IMAGE INTENT: only when the user actually asks to CREATE an image does the
-    // agent run to the Design Image Studio and generate one (via OpenRouter).
+    // IMAGE INTENT: only when the user actually asks to CREATE an image. It only
+    // works when a Design Image Studio is on the map AND the OpenRouter key is
+    // populated — otherwise the agent explains what's missing (and never falls
+    // through to the text model, which would just chat about it).
     if (isImageRequest(text)) {
-      const walked = onImageErrand?.() ?? false;
-      const ack = walked
-        ? `🎨 On it — heading to the Design Image Studio to create that…`
-        : hasImageStudio
-          ? `🎨 Creating that image…`
-          : `🎨 Creating that image… (build a Design Image Studio to watch me walk over and make it!)`;
-      const acked = [...next, { from: "agent" as const, text: ack }];
-      setMsgs(acked);
       const orCfg = getConfig("openrouter");
+      const orReady = orCfg.apiKey.trim().length > 0;
+      if (!hasImageStudio || !orReady) {
+        const fix = !hasImageStudio
+          ? "place a **Design Image Studio** on the map (Departments → Design Image Studio)"
+          : "add your OpenRouter API key — open the **Design Image Studio** (or OpenRouter Hub) → Settings";
+        const blocked: ChatMsg[] = [
+          ...next,
+          {
+            from: "agent" as const,
+            text: `🎨 I generate images at the Design Image Studio. To switch it on, ${fix}. Once that's set, just ask and I'll make the image straight away.`,
+          },
+        ];
+        setMsgs(blocked);
+        persistSession(blocked);
+        setBusy(false);
+        return;
+      }
+
+      // Both ready — walk to the studio and generate immediately, no questions.
+      onImageErrand?.();
+      const acked = [...next, { from: "agent" as const, text: "🎨 On it — heading to the Design Image Studio to create that…" }];
+      setMsgs(acked);
       try {
         const res = await apiGenerateImage({
           apiKey: orCfg.apiKey,
@@ -675,11 +691,12 @@ export function AgentPanel({
           prompt: imagePromptFrom(text),
         });
         if (res.error) throw new Error(res.error);
+        if (!res.image) throw new Error("the studio returned no image — try another image model in its settings");
         const done: ChatMsg[] = [
           ...acked,
           {
             from: "agent" as const,
-            text: res.text || `Here's your image, made at the Design Image Studio.`,
+            text: res.text || "Here's your image, made at the Design Image Studio.",
             image: res.image,
           },
         ];
@@ -690,7 +707,7 @@ export function AgentPanel({
           ...acked,
           {
             from: "agent" as const,
-            text: `⚠️ Couldn't generate the image: ${(err as Error).message}. The studio uses your OpenRouter Hub key — open that building → Settings to add one.`,
+            text: `⚠️ Couldn't generate the image: ${(err as Error).message}.`,
           },
         ];
         setMsgs(done);

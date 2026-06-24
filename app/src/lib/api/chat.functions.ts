@@ -113,7 +113,12 @@ export const generateImage = createServerFn({ method: "POST" })
         body: JSON.stringify({
           model: data.model,
           modalities: ["image", "text"],
-          messages: [{ role: "user", content: data.prompt }],
+          messages: [
+            {
+              role: "user",
+              content: `Generate an image for this request. Output the image directly — do not ask any questions or request clarification, just create your best interpretation.\n\nRequest: ${data.prompt}`,
+            },
+          ],
         }),
       });
       const json = (await res.json()) as {
