@@ -58,14 +58,27 @@ async function apiGenerateImage(input: {
 }
 
 // Does this message read like an instruction to CREATE an image? Only then does
-// the agent run off to the Design Image Studio and generate one.
+// the agent run off to the Design Image Studio and generate one. Kept generous
+// so natural phrasings ("gen an image of a cat", "make me a logo") all trigger.
 function isImageRequest(text: string): boolean {
-  const t = text.toLowerCase();
-  if (/^\/(image|img|imagine|draw)\b/.test(t)) return true;
-  return (
-    /\b(generate|create|make|draw|design|render|paint|produce|whip up|give me|build|sketch)\b/.test(t) &&
-    /\b(image|picture|pic|photo|logo|art|artwork|illustration|drawing|graphic|poster|thumbnail|icon|wallpaper|banner|sticker|avatar|mockup|render)s?\b/.test(t)
-  );
+  const t = text.toLowerCase().trim();
+  // Explicit slash / prefix commands.
+  if (/^\/?(image|img|imagine|draw|art|pic|photo)\b/.test(t)) return true;
+
+  const noun =
+    /\b(image|images|picture|pictures|pic|pics|photo|photos|logo|logos|artwork|illustration|illustrations|drawing|drawings|graphic|graphics|poster|posters|thumbnail|thumbnails|icon|icons|wallpaper|banner|sticker|stickers|avatar|mockup|render|renders|portrait|painting|paintings|scene|background)\b/;
+  const verb =
+    /\b(gen|gen\.|generate|generates|create|creates|make|makes|made|draw|draws|design|designs|render|renders|paint|paints|produce|whip up|give me|show me|build|sketch|illustrate|visuali[sz]e|imagine|picture)\b/;
+
+  if (noun.test(t) && verb.test(t)) return true;
+  // "an image of …", "picture of …", "logo for …" — noun + connector, verb optional.
+  if (
+    /\b(image|picture|pic|photo|logo|drawing|illustration|artwork|poster|wallpaper|render|portrait|painting|icon|banner|sticker|avatar)\s+(of|for|showing|with|that|depicting)\b/.test(
+      t,
+    )
+  )
+    return true;
+  return false;
 }
 
 // Strip a leading slash-command (e.g. "/image a red fox") to the bare prompt.
