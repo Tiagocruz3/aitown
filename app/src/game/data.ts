@@ -43,13 +43,11 @@ export interface ProviderDef {
   color: string; // primary brand accent
   color2: string; // secondary accent / gradient end
   ink: string; // readable text color on the brand color
-  // The branded agent that spawns with this building:
+  // The branded agent that spawns with this building. Agents are NAMED BY THE
+  // USER (and given their own prompt) when the building is placed — only the
+  // role title is predefined here.
   agent: {
-    name: string;
     title: string;
-    personality: string;
-    greeting: string;
-    voice: string; // how the agent "talks" in mock replies
   };
   // Settings the building modal collects:
   apiBase: string; // default endpoint placeholder
@@ -70,12 +68,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     color2: "#0b7d61",
     ink: "#ffffff",
     agent: {
-      name: "Nova",
       title: "OpenAI Agent",
-      personality: "Fast, helpful, endlessly capable.",
-      greeting:
-        "Hi, I'm Nova, your OpenAI agent. Ask me anything and I'll get to work.",
-      voice: "crisp and upbeat",
     },
     apiBase: "https://api.openai.com/v1",
     apiKeyHint: "sk-...",
@@ -98,12 +91,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     color2: "#b85c3c",
     ink: "#ffffff",
     agent: {
-      name: "Claude",
       title: "Anthropic Agent",
-      personality: "Thoughtful, careful, warm.",
-      greeting:
-        "Hello, I'm Claude, your Anthropic agent. I'm happy to help — what shall we work on?",
-      voice: "warm and considered",
     },
     apiBase: "https://api.anthropic.com/v1",
     apiKeyHint: "sk-ant-...",
@@ -126,12 +114,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     color2: "#0b0b0d",
     ink: "#ffffff",
     agent: {
-      name: "Grok",
       title: "xAI Agent",
-      personality: "Witty, blunt, a little rebellious.",
-      greeting:
-        "Yo, Grok here — xAI's finest. Fire away, I don't do boring answers.",
-      voice: "witty and irreverent",
     },
     apiBase: "https://api.x.ai/v1",
     apiKeyHint: "xai-...",
@@ -153,12 +136,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDef> = {
     color2: "#8b5cf6",
     ink: "#ffffff",
     agent: {
-      name: "Router",
       title: "OpenRouter Agent",
-      personality: "Resourceful, routes you to the best model for the job.",
-      greeting:
-        "Hey, I'm Router. I can reach hundreds of models through OpenRouter — what do you need?",
-      voice: "smart and resourceful",
     },
     apiBase: "https://openrouter.ai/api/v1",
     apiKeyHint: "sk-or-...",
@@ -328,10 +306,10 @@ export const BUILDING_LIBRARY: {
   provider?: ProviderId; // if set, placing it spawns this provider's agent
   facility?: FacilityId; // if set, places a 3D facility building (no agent)
 }[] = [
-  { id: "openai", emoji: "🟢", label: "OpenAI HQ", desc: "Spawns Nova, your OpenAI agent.", provider: "openai" },
-  { id: "anthropic", emoji: "🟠", label: "Anthropic Studio", desc: "Spawns Claude, your Anthropic agent.", provider: "anthropic" },
-  { id: "grok", emoji: "🔵", label: "Grok Tower", desc: "Spawns Grok, your xAI agent.", provider: "grok" },
-  { id: "openrouter", emoji: "🟣", label: "OpenRouter Hub", desc: "Spawns Router, multi-model access.", provider: "openrouter" },
+  { id: "openai", emoji: "🟢", label: "OpenAI HQ", desc: "Hire an OpenAI agent — you name it.", provider: "openai" },
+  { id: "anthropic", emoji: "🟠", label: "Anthropic Studio", desc: "Hire an Anthropic agent — you name it.", provider: "anthropic" },
+  { id: "grok", emoji: "🔵", label: "Grok Tower", desc: "Hire an xAI agent — you name it.", provider: "grok" },
+  { id: "openrouter", emoji: "🟣", label: "OpenRouter Hub", desc: "Hire a multi-model agent — you name it.", provider: "openrouter" },
   { id: "design-studio", emoji: "🎨", label: "Design Image Studio", desc: "AI image generation via OpenRouter.", facility: "image-studio" },
   { id: "youtube", emoji: "▶️", label: "YouTube Studio", desc: "Video production hub.", facility: "youtube" },
   { id: "research-lab", emoji: "🔬", label: "Research Lab", desc: "Research, reports, knowledge base." },

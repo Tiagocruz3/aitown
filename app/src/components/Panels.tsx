@@ -289,17 +289,17 @@ export function BuildingPanel({
             <input
               value={cfg.agentName}
               onChange={(e) => setCfg({ ...cfg, agentName: e.target.value })}
-              placeholder={def.agent.name}
+              placeholder={`e.g. Atlas — your ${def.agent.title}`}
               spellCheck={false}
               maxLength={28}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/25"
             />
           </Field>
-          <Field label="System prompt" hint={cfg.systemPrompt.trim() ? "custom" : "using default personality"}>
+          <Field label="System prompt" hint={cfg.systemPrompt.trim() ? "custom" : "neutral default"}>
             <textarea
               value={cfg.systemPrompt}
               onChange={(e) => setCfg({ ...cfg, systemPrompt: e.target.value })}
-              placeholder={`e.g. You are ${cfg.agentName || def.agent.name}, a ${def.agent.title.toLowerCase()} who… (leave blank to use the built-in personality)`}
+              placeholder={`e.g. You are ${cfg.agentName || "my agent"}, a focused assistant who… (leave blank for a neutral default)`}
               rows={4}
               spellCheck={false}
               className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm leading-relaxed text-white outline-none placeholder:text-white/30 focus:border-white/25"
@@ -310,7 +310,7 @@ export function BuildingPanel({
               onClick={() => setCfg({ ...cfg, systemPrompt: "" })}
               className="text-[11px] font-semibold text-white/50 underline hover:text-white/80"
             >
-              Reset to default personality
+              Clear prompt (use neutral default)
             </button>
           )}
         </div>
@@ -401,7 +401,7 @@ export function BuildingPanel({
         </Field>
 
         <p className="text-[11px] leading-relaxed text-white/40">
-          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {def.agent.name} chats or you connect. Models shown are pulled live from {def.company} — leave the key blank for demo replies.
+          Your key stays in this browser and is sent only to {def.company}'s API via a server proxy when {cfg.agentName || "your agent"} chats or you connect. Models shown are pulled live from {def.company} — leave the key blank for demo replies.
         </p>
       </div>
 
@@ -589,12 +589,9 @@ export function AgentPanel({
   const def = PROVIDERS[provider];
   const cfg = getConfig(provider);
   const live = hasKey(provider);
-  const agentName = cfg.agentName;
-  // Greeting personalized to the (possibly custom) agent name.
-  const greeting =
-    cfg.agentName === def.agent.name
-      ? def.agent.greeting
-      : `Hi, I'm ${agentName}, your ${def.agent.title}. Ask me anything and I'll get to work.`;
+  // The user-chosen name (or a neutral role fallback if unnamed).
+  const agentName = cfg.agentName.trim() || `${def.company} Agent`;
+  const greeting = `Hi, I'm ${agentName}. How can I help?`;
   const [tab, setTab] = useState<AgentTab>("chat");
   const [sessionId, setSessionId] = useState<string>(() => `s-${Date.now()}`);
   const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: greeting }]);
@@ -751,7 +748,7 @@ export function AgentPanel({
       }
     } else {
       setTimeout(() => {
-        const done = [...next, { from: "agent" as const, text: mockReply(agentName, def.agent.voice, text) }];
+        const done = [...next, { from: "agent" as const, text: mockReply(agentName, text) }];
         setMsgs(done);
         persistSession(done);
         setBusy(false);
@@ -772,7 +769,7 @@ export function AgentPanel({
     <CenterModal accent={def.color} onClose={onClose}>
       <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${def.color}26, transparent)` }}>
         <div className="grid h-11 w-11 place-items-center rounded-full" style={{ background: "#0006", boxShadow: `0 0 0 2px ${def.color}55` }}>
-          <BrandImg src={def.agentArt} alt={def.agent.name} className="h-10 w-10 object-contain" />
+          <BrandImg src={def.agentArt} alt={agentName} className="h-10 w-10 object-contain" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -1049,7 +1046,7 @@ export function FacilityPanel({
   );
 }
 
-function mockReply(name: string, voice: string, prompt: string) {
+function mockReply(name: string, prompt: string) {
   const p = prompt.length > 60 ? prompt.slice(0, 57) + "…" : prompt;
-  return `(${voice}) Got it — "${p}". I'm ${name}, and in demo mode I'm simulating a reply. Drop a real API key in my building's settings and I'll answer for real.`;
+  return `Got it — "${p}". I'm ${name}, and in demo mode I'm simulating a reply. Drop a real API key in my building's settings and I'll answer for real.`;
 }

@@ -10,8 +10,8 @@ import { BuildingPanel, AgentPanel, TownHallPanel, FacilityPanel } from "./Panel
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
 import { MODEL_FRAMES } from "../game/model3d";
-import { ContextMenu, ConfirmModal, type ConfirmSpec } from "./Modals";
-import { agentNameOf } from "../game/config";
+import { ContextMenu, ConfirmModal, AgentSetupModal, type ConfirmSpec } from "./Modals";
+import { agentNameOf, getConfig, setConfig } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
@@ -53,6 +53,9 @@ export function Game() {
   const [pickedTile, setPickedTile] = useState<{ col: number; row: number } | null>(null);
   const [ctx, setCtx] = useState<{ b: PlacedBuilding; x: number; y: number } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<(ConfirmSpec & { onConfirm: () => void }) | null>(null);
+  // After placing a provider building, prompt the user to name its agent + give
+  // it a prompt (agents have no predefined personas).
+  const [agentSetup, setAgentSetup] = useState<PlacedBuilding | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
@@ -219,7 +222,6 @@ export function Game() {
       setPlacing(null);
       return;
     }
-    const def = PROVIDERS[placing.provider];
     const b: PlacedBuilding = {
       id: `b-${placing.provider}-${Date.now()}`,
       kind: "provider",
@@ -228,10 +230,22 @@ export function Game() {
       row,
     };
     setBuildings((arr) => [...arr, b]);
+    bump();
+    setPlacing(null);
+    // Don't spawn yet — ask the user to name the agent + set its prompt first.
+    setAgentSetup(b);
+  }
+
+  // Finish placing a provider building: save the chosen name/prompt and spawn.
+  function finishAgentSetup(b: PlacedBuilding, name: string, prompt: string) {
+    if (name || prompt) {
+      const cfg = getConfig(b.provider);
+      setConfig(b.provider, { ...cfg, agentName: name || cfg.agentName, systemPrompt: prompt || cfg.systemPrompt });
+    }
     spawnAgent(b);
     bump();
-    showToast(`${def.name} placed · ${def.agent.name} reporting for duty`);
-    setPlacing(null);
+    showToast(`${PROVIDERS[b.provider].name} placed · ${agentNameOf(b.provider)} reporting for duty`);
+    setAgentSetup(null);
   }
 
   function startPlacingProvider(p: ProviderId) {
@@ -307,7 +321,7 @@ export function Game() {
     setOpenFacility((fb) => (fb?.id === b.id ? null : fb));
     bump();
     if (b.kind === "provider")
-      showToast(`${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`);
+      showToast(`${PROVIDERS[b.provider].name} removed · ${agentNameOf(b.provider)} dismissed`);
     else showToast(`${buildingNameOf(b)} removed`);
   }
 
@@ -737,6 +751,17 @@ export function Game() {
             setConfirmDialog(null);
           }}
           onCancel={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {agentSetup && (
+        <AgentSetupModal
+          roleTitle={PROVIDERS[agentSetup.provider].agent.title}
+          company={PROVIDERS[agentSetup.provider].company}
+          accent={PROVIDERS[agentSetup.provider].color}
+          art={PROVIDERS[agentSetup.provider].agentArt}
+          onConfirm={(name, prompt) => finishAgentSetup(agentSetup, name, prompt)}
+          onSkip={() => finishAgentSetup(agentSetup, "", "")}
         />
       )}
     </div>

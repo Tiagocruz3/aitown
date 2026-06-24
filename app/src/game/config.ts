@@ -29,7 +29,7 @@ export function getConfig(id: ProviderId): ProviderConfig {
     apiKey: all[id]?.apiKey ?? "",
     apiBase: all[id]?.apiBase ?? def.apiBase,
     model: all[id]?.model ?? def.defaultModel,
-    agentName: all[id]?.agentName?.trim() ? all[id]!.agentName! : def.agent.name,
+    agentName: all[id]?.agentName?.trim() ? all[id]!.agentName! : "",
     systemPrompt: all[id]?.systemPrompt ?? "",
   };
 }
@@ -49,9 +49,10 @@ export function hasKey(id: ProviderId): boolean {
   return getConfig(id).apiKey.trim().length > 0;
 }
 
-// The agent's effective display name (custom override or provider default).
+// The agent's effective display name: the user's chosen name, or a neutral
+// role-based fallback if they haven't named it yet (no predefined personas).
 export function agentNameOf(id: ProviderId): string {
-  return getConfig(id).agentName;
+  return getConfig(id).agentName.trim() || `${PROVIDERS[id].company} Agent`;
 }
 
 // The Design Image Studio's default image model (used whenever an agent is told
@@ -82,11 +83,11 @@ export function setImageModel(id: string) {
   }
 }
 
-// The effective system prompt for chat: custom override, else built from personality.
+// The effective system prompt for chat: the user's own prompt if set, else a
+// neutral default (no predefined personality).
 export function systemPromptOf(id: ProviderId): string {
-  const def = PROVIDERS[id];
-  const name = getConfig(id).agentName;
+  const name = agentNameOf(id);
   const custom = getConfig(id).systemPrompt.trim();
   if (custom) return custom;
-  return `You are ${name}, the ${def.agent.title} in AgentVillage OS. Personality: ${def.agent.personality} Be ${def.agent.voice}. Keep replies concise.`;
+  return `You are ${name}, an AI agent in AgentVillage OS powered by ${PROVIDERS[id].company}. Help the user with whatever they ask. Be clear and concise.`;
 }
