@@ -6,7 +6,7 @@ import {
   type LiveAgent,
   type RoadTool,
 } from "./GameCanvas";
-import { BuildingPanel, AgentPanel, TownHallPanel, FacilityPanel } from "./Panels";
+import { BuildingPanel, AgentPanel, TownHallPanel, FacilityPanel, ImageLibrary } from "./Panels";
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
 import { MODEL_FRAMES } from "../game/model3d";
@@ -43,6 +43,7 @@ export function Game() {
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
   const [openFacility, setOpenFacility] = useState<PlacedBuilding | null>(null);
+  const [openLibrary, setOpenLibrary] = useState<PlacedBuilding | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
   // Menu-stack navigation for the fixed dock. Empty = main menu; ["buildings"]
   // drills into the placement submenu (the only category that stays in-dock).
@@ -289,6 +290,7 @@ export function Game() {
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenFacility(null);
+    setOpenLibrary(null);
     setMovingId(b.id);
     showToast(`Moving ${buildingNameOf(b)} · click a free tile`);
   }
@@ -319,6 +321,7 @@ export function Game() {
     setOpenBuilding((ob) => (ob?.id === b.id ? null : ob));
     setOpenTownHall((th) => (th?.id === b.id ? null : th));
     setOpenFacility((fb) => (fb?.id === b.id ? null : fb));
+    setOpenLibrary((lb) => (lb?.id === b.id ? null : lb));
     bump();
     if (b.kind === "provider")
       showToast(`${PROVIDERS[b.provider].name} removed · ${agentNameOf(b.provider)} dismissed`);
@@ -404,6 +407,7 @@ export function Game() {
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenFacility(null);
+    setOpenLibrary(null);
     setOpenAgentId(null);
     setSelectedAgentId(id);
   }
@@ -426,6 +430,7 @@ export function Game() {
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenFacility(null);
+    setOpenLibrary(null);
     setOpenAgentId(null);
     setSelectedId(b.id);
   }
@@ -439,6 +444,7 @@ export function Game() {
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenFacility(null);
+    setOpenLibrary(null);
     setOpenAgentId(null);
     setFullscreen(kind);
   }
@@ -448,6 +454,7 @@ export function Game() {
     setDockPath([]);
     setPickedTile(null);
     setFullscreen(null);
+    setOpenLibrary(null);
     setSelectedId(b.id);
     if (b.kind === "town-hall") {
       setOpenBuilding(null);
@@ -472,7 +479,21 @@ export function Game() {
     setOpenBuilding(null);
     setOpenTownHall(null);
     setOpenFacility(null);
+    setOpenLibrary(null);
     setOpenAgentId(id);
+  }
+
+  // Open the studio's generated-image library (the "Open" action on the studio).
+  function openFacilityLibrary(b: PlacedBuilding) {
+    setDockPath([]);
+    setPickedTile(null);
+    setFullscreen(null);
+    setOpenBuilding(null);
+    setOpenTownHall(null);
+    setOpenFacility(null);
+    setOpenAgentId(null);
+    setSelectedId(b.id);
+    setOpenLibrary(b);
   }
   function openAgentByProvider(p: ProviderId) {
     const a = agents.current.find((x) => x.provider === p);
@@ -655,6 +676,7 @@ export function Game() {
           onRotateBuilding={rotateBuilding}
           onDeleteBuilding={confirmRemoveBuilding}
           onChatBuilding={(b) => openAgentByProvider(b.provider)}
+          onOpenLibrary={openFacilityLibrary}
           onDeselect={() => setSelectedId(null)}
           onChatAgent={(a) => openAgentById(a.id)}
           onConfigureAgent={configureAgent}
@@ -705,6 +727,12 @@ export function Game() {
           onDelete={() => confirmRemoveBuilding(openFacility)}
         />
       )}
+      {openLibrary && (
+        <ImageLibrary
+          accent={openLibrary.facility ? FACILITIES[openLibrary.facility].color : PROVIDERS.openrouter.color}
+          onClose={() => setOpenLibrary(null)}
+        />
+      )}
       {openAgentProvider && (
         <AgentPanel
           key={openAgentProvider}
@@ -721,7 +749,14 @@ export function Game() {
           y={ctx.y}
           onClose={() => setCtx(null)}
           items={
-            ctx.b.kind === "town-hall" || ctx.b.kind === "facility"
+            ctx.b.kind === "facility" && FACILITIES[ctx.b.facility!].usesImageGen
+              ? [
+                  { label: "Open library", onClick: () => openFacilityLibrary(ctx.b) },
+                  { label: "Config", onClick: () => openBuildingById(ctx.b) },
+                  { label: "Move", onClick: () => startMoving(ctx.b) },
+                  { label: "Remove", danger: true, onClick: () => confirmRemoveBuilding(ctx.b) },
+                ]
+              : ctx.b.kind === "town-hall" || ctx.b.kind === "facility"
               ? [
                   { label: "Open", onClick: () => openBuildingById(ctx.b) },
                   { label: "Move", onClick: () => startMoving(ctx.b) },

@@ -28,6 +28,7 @@ import {
   type ChatSession,
   type AgentStore,
 } from "../game/chatStore";
+import { getImages, addImage, deleteImage, clearImages, type SavedImage } from "../game/imageStore";
 import { BrandImg } from "./Modals";
 import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
 
@@ -694,18 +695,22 @@ export function AgentPanel({
       setMsgs(acked);
       try {
         const prompt = imagePromptFrom(text);
-        let res = await apiGenerateImage({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase, model: getImageModel(), prompt });
+        let usedModel = getImageModel();
+        let res = await apiGenerateImage({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase, model: usedModel, prompt });
         // If the saved model has no live endpoint, pick a real one and retry once.
         if (res.error && /no endpoint|not a valid model|invalid model|not found|unsupported/i.test(res.error)) {
           const live = await apiImageModels({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase });
           const pick = live.models?.find((m) => m.id === DEFAULT_IMAGE_MODEL) ?? live.models?.[0];
           if (pick) {
             setImageModel(pick.id);
+            usedModel = pick.id;
             res = await apiGenerateImage({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase, model: pick.id, prompt });
           }
         }
         if (res.error) throw new Error(res.error);
         if (!res.image) throw new Error("the studio returned no image — try another image model in its settings");
+        // Store every generated image in the studio's library.
+        addImage({ url: res.image, prompt, model: usedModel, provider, createdAt: Date.now() });
         const done: ChatMsg[] = [
           ...acked,
           {
@@ -1056,4 +1061,87 @@ export function FacilityPanel({
 function mockReply(name: string, prompt: string) {
   const p = prompt.length > 60 ? prompt.slice(0, 57) + "…" : prompt;
   return `Got it — "${p}". I'm ${name}, and in demo mode I'm simulating a reply. Drop a real API key in my building's settings and I'll answer for real.`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Image Library — gallery of every image made at the Design Studio    */
+/* ------------------------------------------------------------------ */
+
+export function ImageLibrary({ accent, onClose }: { accent: string; onClose: () => void }) {
+  const [images, setImages] = useState<SavedImage[]>(() => getImages());
+  const [zoom, setZoom] = useState<SavedImage | null>(null);
+
+  function remove(id: string) {
+    deleteImage(id);
+    setImages(getImages());
+    setZoom((z) => (z?.id === id ? null : z));
+  }
+  function clearAll() {
+    clearImages();
+    setImages([]);
+    setZoom(null);
+  }
+  function download(img: SavedImage) {
+    const a = document.createElement("a");
+    a.href = img.url;
+    a.download = `${img.prompt.slice(0, 32).replace(/[^a-z0-9]+/gi, "-") || "image"}.png`;
+    a.click();
+  }
+
+  return (
+    <CenterModal accent={accent} onClose={onClose}>
+      <div className="flex items-center gap-3 border-b border-white/10 p-4" style={{ background: `linear-gradient(90deg, ${accent}26, transparent)` }}>
+        <div className="grid h-11 w-11 place-items-center rounded-2xl text-2xl" style={{ background: `${accent}22` }}>🖼️</div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-bold text-white">Image Library</h2>
+          <div className="truncate text-xs text-white/50">{images.length} image{images.length === 1 ? "" : "s"} generated at the Design Image Studio</div>
+        </div>
+        {images.length > 0 && (
+          <button onClick={clearAll} className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20">Clear all</button>
+        )}
+        <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {images.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <div className="text-5xl opacity-70">🎨</div>
+            <p className="text-lg font-bold text-white/80">No images yet</p>
+            <p className="max-w-sm text-sm text-white/45">Ask any chat agent to “create an image of…”. Everything generated at the studio is collected here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {images.map((img) => (
+              <div key={img.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                <button onClick={() => setZoom(img)} className="block w-full">
+                  <img src={img.url} alt={img.prompt} className="aspect-square w-full object-cover transition group-hover:scale-[1.03]" />
+                </button>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <p className="line-clamp-2 text-[11px] leading-snug text-white/85">{img.prompt}</p>
+                </div>
+                <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                  <button onClick={() => download(img)} title="Download" className="grid h-7 w-7 place-items-center rounded-lg bg-black/60 text-xs text-white hover:bg-black/80">⬇</button>
+                  <button onClick={() => remove(img.id)} title="Delete" className="grid h-7 w-7 place-items-center rounded-lg bg-black/60 text-xs text-white hover:bg-red-500/80">🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {zoom && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 p-5" onClick={() => setZoom(null)}>
+          <img src={zoom.url} alt={zoom.prompt} className="max-h-[78vh] max-w-full rounded-2xl object-contain shadow-2xl" />
+          <div className="mt-3 flex items-center gap-3">
+            <p className="max-w-xl text-center text-sm text-white/80">{zoom.prompt}</p>
+          </div>
+          <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => download(zoom)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20">⬇ Download</button>
+            <button onClick={() => remove(zoom.id)} className="rounded-xl bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/30">🗑 Delete</button>
+            <button onClick={() => setZoom(null)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20">Close</button>
+          </div>
+        </div>
+      )}
+    </CenterModal>
+  );
 }

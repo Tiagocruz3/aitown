@@ -56,6 +56,7 @@ export function Dock({
   onRotateBuilding,
   onDeleteBuilding,
   onChatBuilding,
+  onOpenLibrary,
   onDeselect,
   onChatAgent,
   onConfigureAgent,
@@ -80,6 +81,7 @@ export function Dock({
   onRotateBuilding: (b: PlacedBuilding) => void;
   onDeleteBuilding: (b: PlacedBuilding) => void;
   onChatBuilding: (b: PlacedBuilding) => void;
+  onOpenLibrary: (b: PlacedBuilding) => void;
   onDeselect: () => void;
   onChatAgent: (a: LiveAgent) => void;
   onConfigureAgent: (a: LiveAgent) => void;
@@ -108,6 +110,7 @@ export function Dock({
       onRotateBuilding,
       onDeleteBuilding,
       onChatBuilding,
+      onOpenLibrary,
     });
     return (
       <DockBar crumbs={["Departments", buildingNameOf(selected)]} items={items} onBack={onDeselect} />
@@ -356,14 +359,23 @@ function buildingActions(
     onRotateBuilding: (b: PlacedBuilding) => void;
     onDeleteBuilding: (b: PlacedBuilding) => void;
     onChatBuilding: (b: PlacedBuilding) => void;
+    onOpenLibrary: (b: PlacedBuilding) => void;
   },
 ): DockItem[] {
   const isHall = b.kind === "town-hall";
   const isFacility = b.kind === "facility";
+  const isImageStudio = isFacility && !!FACILITIES[b.facility!].usesImageGen;
   const is3D = !!buildingModelUrl(b);
-  const items: DockItem[] = [
-    { id: "act-open", label: "Open", emoji: isFacility ? "🏗️" : "🏢", onSelect: () => h.onOpenBuilding(b) },
-  ];
+
+  // The Image Studio: Open shows the generated-image library; Config opens its
+  // settings (model picker + OpenRouter status).
+  const items: DockItem[] = [];
+  if (isImageStudio) {
+    items.push({ id: "act-open", label: "Library", emoji: "🖼️", onSelect: () => h.onOpenLibrary(b) });
+    items.push({ id: "act-config", label: "Config", emoji: "⚙️", onSelect: () => h.onOpenBuilding(b) });
+  } else {
+    items.push({ id: "act-open", label: "Open", emoji: isFacility ? "🏗️" : "🏢", onSelect: () => h.onOpenBuilding(b) });
+  }
   // Provider buildings have a branded agent + tool slots; facilities don't.
   if (!isHall && !isFacility) {
     items.push({ id: "act-workers", label: "Workers", emoji: "👥", onSelect: () => h.onChatBuilding(b) });
