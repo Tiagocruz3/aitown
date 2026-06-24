@@ -5,6 +5,7 @@ import {
   TOWN_HALL,
   FACILITIES,
   IMAGE_MODELS,
+  DEFAULT_IMAGE_MODEL,
   type ProviderId,
 } from "../game/data";
 import {
@@ -16,7 +17,7 @@ import {
   setImageModel,
   type ProviderConfig,
 } from "../game/config";
-import { chat, listModels, generateImage } from "../lib/api/chat.functions";
+import { chat, listModels, generateImage, listImageModels } from "../lib/api/chat.functions";
 import {
   getAgentStore,
   saveSession,
@@ -55,6 +56,10 @@ async function apiGenerateImage(input: {
   prompt: string;
 }): Promise<{ image: string; text: string; error?: string }> {
   return generateImage({ data: input });
+}
+
+async function apiImageModels(input: { apiKey: string; apiBase: string }): Promise<{ models: ModelOpt[]; error?: string }> {
+  return listImageModels({ data: input });
 }
 
 // Does this message read like an instruction to CREATE an image? Only then does
@@ -684,12 +689,17 @@ export function AgentPanel({
       const acked = [...next, { from: "agent" as const, text: "🎨 On it — heading to the Design Image Studio to create that…" }];
       setMsgs(acked);
       try {
-        const res = await apiGenerateImage({
-          apiKey: orCfg.apiKey,
-          apiBase: orCfg.apiBase,
-          model: getImageModel(),
-          prompt: imagePromptFrom(text),
-        });
+        const prompt = imagePromptFrom(text);
+        let res = await apiGenerateImage({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase, model: getImageModel(), prompt });
+        // If the saved model has no live endpoint, pick a real one and retry once.
+        if (res.error && /no endpoint|not a valid model|invalid model|not found|unsupported/i.test(res.error)) {
+          const live = await apiImageModels({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase });
+          const pick = live.models?.find((m) => m.id === DEFAULT_IMAGE_MODEL) ?? live.models?.[0];
+          if (pick) {
+            setImageModel(pick.id);
+            res = await apiGenerateImage({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase, model: pick.id, prompt });
+          }
+        }
         if (res.error) throw new Error(res.error);
         if (!res.image) throw new Error("the studio returned no image — try another image model in its settings");
         const done: ChatMsg[] = [
@@ -906,13 +916,51 @@ export function FacilityPanel({
 }) {
   const f = FACILITIES[building.facility!];
   const [imgModel, setImgModelState] = useState(() => getImageModel());
+  const [liveModels, setLiveModels] = useState<ModelOpt[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
   const orCfg = getConfig("openrouter");
   const orConnected = orCfg.apiKey.trim().length > 0;
+
+  // Pull OpenRouter's LIVE image-capable models so a renamed/removed slug can't
+  // leave a dead default. If the saved model isn't actually servable, snap to a
+  // real one automatically (self-heals the "No endpoints found" error).
+  useEffect(() => {
+    if (!f.usesImageGen) return;
+    let cancelled = false;
+    setLoadingModels(true);
+    setModelError(null);
+    apiImageModels({ apiKey: orCfg.apiKey, apiBase: orCfg.apiBase })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.error) setModelError(res.error);
+        const models = res.models ?? [];
+        setLiveModels(models);
+        if (models.length && !models.some((m) => m.id === getImageModel())) {
+          const fix = models.find((m) => m.id === DEFAULT_IMAGE_MODEL) ?? models[0];
+          setImgModelState(fix.id);
+          setImageModel(fix.id);
+        }
+      })
+      .catch((err) => !cancelled && setModelError((err as Error).message))
+      .finally(() => !cancelled && setLoadingModels(false));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [building.id]);
+
+  // Prefer the live catalog; fall back to the curated static list. Always keep
+  // the currently-selected model visible even if it's not in the list.
+  const modelOptions: ModelOpt[] = (() => {
+    const base = liveModels.length ? liveModels : IMAGE_MODELS;
+    return base.some((m) => m.id === imgModel) ? base : [{ id: imgModel, label: imgModel }, ...base];
+  })();
 
   function chooseModel(id: string) {
     setImgModelState(id);
     setImageModel(id);
-    onToast(`Default image model set · ${IMAGE_MODELS.find((m) => m.id === id)?.label ?? id}`);
+    onToast(`Default image model set · ${modelOptions.find((m) => m.id === id)?.label ?? id}`);
   }
 
   return (
@@ -960,7 +1008,10 @@ export function FacilityPanel({
               </span>
             </div>
 
-            <Field label="Default image model" hint="used when an agent is told to create an image">
+            <Field
+              label="Default image model"
+              hint={loadingModels ? "loading live models…" : liveModels.length ? `${liveModels.length} live image models` : "used when an agent is told to create an image"}
+            >
               <div className="relative">
                 <select
                   value={imgModel}
@@ -968,14 +1019,19 @@ export function FacilityPanel({
                   className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-9 text-sm text-white outline-none focus:border-white/25"
                   style={{ borderColor: `${f.color}66` }}
                 >
-                  {IMAGE_MODELS.map((m) => (
+                  {modelOptions.map((m) => (
                     <option key={m.id} value={m.id} className="bg-[#11131c]">
-                      {m.label} — {m.id}
+                      {m.label}{m.label !== m.id ? ` — ${m.id}` : ""}
                     </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
               </div>
+              {modelError && (
+                <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+                  Couldn't load live models ({modelError}) — using the built-in list.
+                </p>
+              )}
             </Field>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[12px] leading-relaxed text-white/55">

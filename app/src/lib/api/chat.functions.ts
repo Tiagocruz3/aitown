@@ -52,6 +52,43 @@ const ImageInput = z.object({
   prompt: z.string(),
 });
 
+const ImageModelsInput = z.object({
+  apiKey: z.string().default(""),
+  apiBase: z.string().default("https://openrouter.ai/api/v1"),
+});
+
+// Live list of OpenRouter models that can OUTPUT images (the studio's catalog).
+// Filtered by architecture.output_modalities so a renamed/removed slug can never
+// leave a dead default behind.
+export const listImageModels = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as z.infer<typeof ImageModelsInput>)
+  .handler(async ({ data }) => {
+    const key = (data.apiKey || envKey("openrouter")).trim();
+    const base = (data.apiBase || "https://openrouter.ai/api/v1").replace(/\/$/, "");
+    try {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+        "HTTP-Referer": "https://agentvillage.os",
+        "X-Title": "AgentVillage OS",
+      };
+      if (key) headers["authorization"] = `Bearer ${key}`;
+      const res = await fetch(`${base}/models`, { method: "GET", headers });
+      const json = (await res.json()) as {
+        data?: { id?: string; name?: string; architecture?: { output_modalities?: string[] } }[];
+        error?: { message?: string };
+      };
+      if (!res.ok) return { models: [] as { id: string; label: string }[], error: json?.error?.message || `HTTP ${res.status}` };
+      const models = (json.data ?? [])
+        .filter((m) => Array.isArray(m.architecture?.output_modalities) && m.architecture!.output_modalities!.includes("image"))
+        .map((m) => ({ id: m.id ?? "", label: m.name ?? m.id ?? "" }))
+        .filter((m) => m.id);
+      models.sort((a, b) => a.id.localeCompare(b.id));
+      return { models };
+    } catch (err) {
+      return { models: [] as { id: string; label: string }[], error: (err as Error).message };
+    }
+  });
+
 export const listModels = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as z.infer<typeof ModelsInput>)
   .handler(async ({ data }) => {

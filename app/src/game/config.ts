@@ -58,10 +58,16 @@ export function agentNameOf(id: ProviderId): string {
 // to create an image). Persisted locally; falls back to the global default.
 const IMG_MODEL_KEY = "agentvillage.imagemodel.v1";
 
+// Slugs that OpenRouter has retired (kept here so a previously-saved value is
+// silently migrated to the current default instead of 404ing on generation).
+const DEAD_IMAGE_MODELS = new Set(["google/gemini-2.5-flash-image-preview"]);
+
 export function getImageModel(): string {
   if (typeof window === "undefined") return DEFAULT_IMAGE_MODEL;
   try {
-    return localStorage.getItem(IMG_MODEL_KEY) || DEFAULT_IMAGE_MODEL;
+    const v = localStorage.getItem(IMG_MODEL_KEY);
+    if (!v || DEAD_IMAGE_MODELS.has(v)) return DEFAULT_IMAGE_MODEL;
+    return v;
   } catch {
     return DEFAULT_IMAGE_MODEL;
   }

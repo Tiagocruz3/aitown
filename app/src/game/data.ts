@@ -248,13 +248,11 @@ export interface ImageModelOption {
 }
 
 export const IMAGE_MODELS: ImageModelOption[] = [
-  { id: "google/gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image (Nano Banana)" },
+  { id: "google/gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image (Nano Banana)" },
   { id: "google/gemini-2.0-flash-exp:free", label: "Gemini 2.0 Flash · image (free)" },
-  { id: "openai/gpt-4o", label: "GPT-4o · image output" },
-  { id: "openai/gpt-4o-mini", label: "GPT-4o mini · image output" },
 ];
 
-export const DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview";
+export const DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image";
 
 // ---- Dock -------------------------------------------------------------------
 
