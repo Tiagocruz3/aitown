@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   GameCanvas,
+  buildingNameOf,
   type PlacedBuilding,
   type LiveAgent,
   type RoadTool,
 } from "./GameCanvas";
-import { BuildingPanel, AgentPanel, TownHallPanel } from "./Panels";
+import { BuildingPanel, AgentPanel, TownHallPanel, FacilityPanel } from "./Panels";
 import { Dock } from "./Trays";
 import { FullscreenView } from "./Screens";
 import { MODEL_FRAMES } from "../game/model3d";
@@ -14,15 +15,22 @@ import { agentNameOf } from "../game/config";
 import {
   PROVIDERS,
   PROVIDER_ORDER,
+  FACILITIES,
+  FACILITY_ORDER,
   TOWN_HALL,
   type DockKind,
   type ProviderId,
+  type FacilityId,
 } from "../game/data";
 
 const STORAGE_KEY = "agentvillage.save.v3";
 
 // What the user is currently placing from the dock.
-type PlaceTarget = { kind: "provider"; provider: ProviderId } | { kind: "town-hall" } | null;
+type PlaceTarget =
+  | { kind: "provider"; provider: ProviderId }
+  | { kind: "facility"; facility: FacilityId }
+  | { kind: "town-hall" }
+  | null;
 
 export function Game() {
   const [buildings, setBuildings] = useState<PlacedBuilding[]>([]);
@@ -34,6 +42,7 @@ export function Game() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null); // agent selected on map
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
+  const [openFacility, setOpenFacility] = useState<PlacedBuilding | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
   // Menu-stack navigation for the fixed dock. Empty = main menu; ["buildings"]
   // drills into the placement submenu (the only category that stays in-dock).
@@ -117,7 +126,10 @@ export function Game() {
             .map((b: PlacedBuilding) => ({ ...b, kind: b.kind ?? "provider" }))
             .filter(
               (b: PlacedBuilding) =>
-                b && (b.kind === "town-hall" || PROVIDER_ORDER.includes(b.provider)),
+                b &&
+                (b.kind === "town-hall" ||
+                  (b.kind === "facility" && !!b.facility && FACILITY_ORDER.includes(b.facility)) ||
+                  PROVIDER_ORDER.includes(b.provider)),
             );
         }
         if (Array.isArray(data?.roads)) {
@@ -187,6 +199,26 @@ export function Game() {
       setPlacing(null);
       return;
     }
+    if (placing.kind === "facility") {
+      const f = FACILITIES[placing.facility];
+      const b: PlacedBuilding = {
+        id: `f-${placing.facility}-${Date.now()}`,
+        kind: "facility",
+        provider: "openrouter", // placeholder; facilities have no chat agent
+        facility: placing.facility,
+        col,
+        row,
+      };
+      setBuildings((arr) => [...arr, b]);
+      bump();
+      showToast(
+        f.usesImageGen
+          ? `${f.name} built · agents will come here to generate images`
+          : `${f.name} built`,
+      );
+      setPlacing(null);
+      return;
+    }
     const def = PROVIDERS[placing.provider];
     const b: PlacedBuilding = {
       id: `b-${placing.provider}-${Date.now()}`,
@@ -206,6 +238,13 @@ export function Game() {
     setRoadTool(null);
     setMovingId(null);
     setPlacing({ kind: "provider", provider: p });
+    setDockPath([]);
+    setPickedTile(null);
+  }
+  function startPlacingFacility(f: FacilityId) {
+    setRoadTool(null);
+    setMovingId(null);
+    setPlacing({ kind: "facility", facility: f });
     setDockPath([]);
     setPickedTile(null);
   }
@@ -235,10 +274,9 @@ export function Game() {
     setPickedTile(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
+    setOpenFacility(null);
     setMovingId(b.id);
-    showToast(
-      `Moving ${b.kind === "town-hall" ? "Town Hall" : PROVIDERS[b.provider].name} · click a free tile`,
-    );
+    showToast(`Moving ${buildingNameOf(b)} · click a free tile`);
   }
 
   function moveTo(id: string, col: number, row: number) {
@@ -266,23 +304,25 @@ export function Game() {
     setSelectedId((s) => (s === b.id ? null : s));
     setOpenBuilding((ob) => (ob?.id === b.id ? null : ob));
     setOpenTownHall((th) => (th?.id === b.id ? null : th));
+    setOpenFacility((fb) => (fb?.id === b.id ? null : fb));
     bump();
-    if (b.kind === "town-hall") showToast("Town Hall removed");
-    else
-      showToast(
-        `${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`,
-      );
+    if (b.kind === "provider")
+      showToast(`${PROVIDERS[b.provider].name} removed · ${PROVIDERS[b.provider].agent.name} dismissed`);
+    else showToast(`${buildingNameOf(b)} removed`);
   }
 
   // Ask for confirmation via the in-game modal (no native confirm() popups).
   function confirmRemoveBuilding(b: PlacedBuilding) {
-    const isHall = b.kind === "town-hall";
-    const name = isHall ? "Town Hall" : PROVIDERS[b.provider].name;
+    const name = buildingNameOf(b);
+    const message =
+      b.kind === "town-hall"
+        ? "This removes your OS control center from the town."
+        : b.kind === "facility"
+          ? `This removes ${name} from the town.`
+          : `This dismisses ${agentNameOf(b.provider)} and removes ${name} from the town.`;
     setConfirmDialog({
       title: `Remove ${name}?`,
-      message: isHall
-        ? "This removes your OS control center from the town."
-        : `This dismisses ${agentNameOf(b.provider)} and removes ${name} from the town.`,
+      message,
       confirmLabel: "Remove",
       danger: true,
       onConfirm: () => deleteBuilding(b),
@@ -349,6 +389,7 @@ export function Game() {
     setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
+    setOpenFacility(null);
     setOpenAgentId(null);
     setSelectedAgentId(id);
   }
@@ -370,6 +411,7 @@ export function Game() {
     setFullscreen(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
+    setOpenFacility(null);
     setOpenAgentId(null);
     setSelectedId(b.id);
   }
@@ -382,6 +424,7 @@ export function Game() {
     setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
+    setOpenFacility(null);
     setOpenAgentId(null);
     setFullscreen(kind);
   }
@@ -394,9 +437,15 @@ export function Game() {
     setSelectedId(b.id);
     if (b.kind === "town-hall") {
       setOpenBuilding(null);
+      setOpenFacility(null);
       setOpenTownHall(b);
+    } else if (b.kind === "facility") {
+      setOpenBuilding(null);
+      setOpenTownHall(null);
+      setOpenFacility(b);
     } else {
       setOpenTownHall(null);
+      setOpenFacility(null);
       setOpenBuilding(b);
     }
   }
@@ -408,12 +457,32 @@ export function Game() {
     setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
+    setOpenFacility(null);
     setOpenAgentId(id);
   }
   function openAgentByProvider(p: ProviderId) {
     const a = agents.current.find((x) => x.provider === p);
     if (a) openAgentById(a.id);
   }
+
+  // Send a provider's agent on an image-generation errand: walk to the Design
+  // Image Studio, "work" there, then return home — a visible symbol of the
+  // generation being in progress and then complete. Returns true if it started
+  // (an Image Studio building exists and the agent is on the map).
+  function sendAgentToStudio(p: ProviderId): boolean {
+    const studio = buildings.find((b) => b.kind === "facility" && b.facility === "image-studio");
+    if (!studio) return false;
+    const a = agents.current.find((x) => x.provider === p);
+    if (!a) return false;
+    a.errand = "to-studio";
+    a.target = { col: studio.col, row: Math.min(15, studio.row + 1) };
+    a.state = "walk";
+    bump();
+    return true;
+  }
+  const hasImageStudio = buildings.some(
+    (b) => b.kind === "facility" && b.facility === "image-studio",
+  );
 
   // Navigate the dock menu stack; entering a submenu closes any open surface.
   function navigateDock(path: string[]) {
@@ -496,10 +565,21 @@ export function Game() {
       {/* placing banner */}
       {placing && (
         <Banner
-          color={placing.kind === "town-hall" ? TOWN_HALL.color : PROVIDERS[placing.provider].color}
+          color={
+            placing.kind === "town-hall"
+              ? TOWN_HALL.color
+              : placing.kind === "facility"
+                ? FACILITIES[placing.facility].color
+                : PROVIDERS[placing.provider].color
+          }
         >
           Click a free tile to place{" "}
-          {placing.kind === "town-hall" ? "Town Hall" : PROVIDERS[placing.provider].name} ·{" "}
+          {placing.kind === "town-hall"
+            ? "Town Hall"
+            : placing.kind === "facility"
+              ? FACILITIES[placing.facility].name
+              : PROVIDERS[placing.provider].name}{" "}
+          ·{" "}
           <button className="underline" onClick={() => setPlacing(null)}>
             cancel
           </button>
@@ -551,6 +631,7 @@ export function Game() {
           selected={selected}
           selectedAgent={selectedAgent}
           onPlaceProvider={startPlacingProvider}
+          onPlaceFacility={startPlacingFacility}
           onPlaceTownHall={startPlacingTownHall}
           onRoadTool={chooseRoadTool}
           onClearRoads={confirmClearRoads}
@@ -601,8 +682,22 @@ export function Game() {
           onDelete={() => confirmRemoveBuilding(openTownHall)}
         />
       )}
+      {openFacility && (
+        <FacilityPanel
+          building={openFacility}
+          onClose={() => setOpenFacility(null)}
+          onToast={showToast}
+          onMove={() => startMoving(openFacility)}
+          onDelete={() => confirmRemoveBuilding(openFacility)}
+        />
+      )}
       {openAgentProvider && (
-        <AgentPanel provider={openAgentProvider} onClose={() => setOpenAgentId(null)} />
+        <AgentPanel
+          provider={openAgentProvider}
+          hasImageStudio={hasImageStudio}
+          onImageErrand={() => sendAgentToStudio(openAgentProvider)}
+          onClose={() => setOpenAgentId(null)}
+        />
       )}
 
       {ctx && (
@@ -611,7 +706,7 @@ export function Game() {
           y={ctx.y}
           onClose={() => setCtx(null)}
           items={
-            ctx.b.kind === "town-hall"
+            ctx.b.kind === "town-hall" || ctx.b.kind === "facility"
               ? [
                   { label: "Open", onClick: () => openBuildingById(ctx.b) },
                   { label: "Move", onClick: () => startMoving(ctx.b) },

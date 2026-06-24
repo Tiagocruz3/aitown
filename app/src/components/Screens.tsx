@@ -5,11 +5,12 @@ import {
   DOCK,
   AGENT_LIBRARY,
   INTEGRATIONS,
+  FACILITIES,
   WORK_SECTIONS,
   CONTROL_SECTIONS,
   type DockKind,
 } from "../game/data";
-import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
+import { buildingNameOf, type PlacedBuilding, type LiveAgent } from "./GameCanvas";
 
 /* ==================================================================
    FULL-SCREEN MANAGEMENT SCREENS
@@ -218,16 +219,16 @@ function ControlScreen({
           <SectionLabel>Building registry</SectionLabel>
           <Grid>
             {buildings.map((b) => {
-              const isHall = b.kind === "town-hall";
-              const p = isHall ? null : PROVIDERS[b.provider];
+              const p = b.kind === "provider" ? PROVIDERS[b.provider] : null;
+              const f = b.kind === "facility" ? FACILITIES[b.facility!] : null;
               return (
                 <GTile
                   key={b.id}
                   art={p?.buildingArt}
-                  emoji={isHall ? "🏛️" : undefined}
-                  label={isHall ? "Town Hall" : p!.name}
+                  emoji={b.kind === "town-hall" ? "🏛️" : f?.emoji}
+                  label={buildingNameOf(b)}
                   desc={`tile ${b.col}, ${b.row}`}
-                  accent={p?.color}
+                  accent={p?.color ?? f?.color}
                 />
               );
             })}

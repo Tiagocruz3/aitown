@@ -1,6 +1,6 @@
 // Per-provider config (API key, base URL, chosen model, agent name + prompt),
 // persisted locally in the browser.
-import { PROVIDERS, type ProviderId } from "./data";
+import { PROVIDERS, DEFAULT_IMAGE_MODEL, type ProviderId } from "./data";
 
 export interface ProviderConfig {
   apiKey: string;
@@ -52,6 +52,28 @@ export function hasKey(id: ProviderId): boolean {
 // The agent's effective display name (custom override or provider default).
 export function agentNameOf(id: ProviderId): string {
   return getConfig(id).agentName;
+}
+
+// The Design Image Studio's default image model (used whenever an agent is told
+// to create an image). Persisted locally; falls back to the global default.
+const IMG_MODEL_KEY = "agentvillage.imagemodel.v1";
+
+export function getImageModel(): string {
+  if (typeof window === "undefined") return DEFAULT_IMAGE_MODEL;
+  try {
+    return localStorage.getItem(IMG_MODEL_KEY) || DEFAULT_IMAGE_MODEL;
+  } catch {
+    return DEFAULT_IMAGE_MODEL;
+  }
+}
+
+export function setImageModel(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(IMG_MODEL_KEY, id);
+  } catch {
+    /* ignore */
+  }
 }
 
 // The effective system prompt for chat: custom override, else built from personality.

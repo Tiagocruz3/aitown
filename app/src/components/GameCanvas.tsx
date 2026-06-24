@@ -10,26 +10,42 @@ import {
   isReady,
   type Camera,
 } from "../game/iso";
-import { PROVIDERS, ROAD, TOWN_HALL, BUILDING_MODELS, type ProviderId } from "../game/data";
+import { PROVIDERS, ROAD, TOWN_HALL, BUILDING_MODELS, FACILITIES, type ProviderId, type FacilityId } from "../game/data";
 import { ensureModel, getModel } from "../game/model3d";
 
-export type BuildingKind = "provider" | "town-hall";
+export type BuildingKind = "provider" | "town-hall" | "facility";
 
 export interface PlacedBuilding {
   id: string;
   kind: BuildingKind;
   provider: ProviderId; // meaningful when kind === "provider"
+  facility?: FacilityId; // meaningful when kind === "facility"
   col: number;
   row: number;
   rot?: number; // rotation frame index for 3D-model buildings (default 0)
 }
 
-// Art + accent color for any building (provider or town hall).
+// Art + accent color + name for any building (provider, town hall, or facility).
 export function buildingArtOf(b: PlacedBuilding): string {
-  return b.kind === "town-hall" ? TOWN_HALL.art : PROVIDERS[b.provider].buildingArt;
+  if (b.kind === "town-hall") return TOWN_HALL.art;
+  if (b.kind === "facility") return ""; // facilities are model-only (no 2D sprite)
+  return PROVIDERS[b.provider].buildingArt;
 }
 export function buildingColorOf(b: PlacedBuilding): string {
-  return b.kind === "town-hall" ? TOWN_HALL.color : PROVIDERS[b.provider].color;
+  if (b.kind === "town-hall") return TOWN_HALL.color;
+  if (b.kind === "facility") return FACILITIES[b.facility!].color;
+  return PROVIDERS[b.provider].color;
+}
+export function buildingNameOf(b: PlacedBuilding): string {
+  if (b.kind === "town-hall") return "Town Hall";
+  if (b.kind === "facility") return FACILITIES[b.facility!].name;
+  return PROVIDERS[b.provider].name;
+}
+// The rotatable 3D GLB url for a building, if it has one.
+export function buildingModelUrl(b: PlacedBuilding): string | undefined {
+  if (b.kind === "provider") return BUILDING_MODELS[b.provider];
+  if (b.kind === "facility") return FACILITIES[b.facility!].model;
+  return undefined;
 }
 
 export interface LiveAgent {
@@ -45,6 +61,9 @@ export interface LiveAgent {
   state: "idle" | "walk" | "work";
   speed: number;
   wait: number;
+  // Image-generation errand: walk to the Design Image Studio, "work" there,
+  // then walk home — a visual symbol of generation in progress / complete.
+  errand?: "to-studio" | "at-studio" | "returning" | null;
 }
 
 export type RoadTool = "road" | "erase-road";
@@ -178,6 +197,7 @@ export function GameCanvas({
     agents.current.forEach((a) => loadImage(a.art));
     // Pre-render any 3D building models into rotation frames (async, client-only).
     Object.values(BUILDING_MODELS).forEach((url) => url && ensureModel(url));
+    Object.values(FACILITIES).forEach((f) => ensureModel(f.model));
 
     function drawTile(
       col: number,
@@ -316,7 +336,7 @@ export function GameCanvas({
         const img = isReady(bArt) ? loadImage(bArt) : null;
         // Rotatable 3D model (if this building has a GLB) — falls back to the
         // 2D sprite while the model is still rendering.
-        const modelUrl = b.kind === "provider" ? BUILDING_MODELS[b.provider] : undefined;
+        const modelUrl = buildingModelUrl(b);
         const model = modelUrl ? getModel(modelUrl) : null;
         const w = TILE_W * 1.5 * cam.zoom;
         const isMoving = movingRef.current === b.id;
@@ -376,7 +396,16 @@ export function GameCanvas({
       for (const a of agents.current) {
         if (a.state === "work") {
           a.wait -= dt;
-          if (a.wait <= 0) a.state = "idle";
+          if (a.wait <= 0) {
+            if (a.errand === "at-studio") {
+              // Image generated — head back home to signal "complete".
+              a.errand = "returning";
+              a.target = { col: a.homeCol, row: a.homeRow };
+              a.state = "walk";
+            } else {
+              a.state = "idle";
+            }
+          }
         } else if (a.state === "idle") {
           a.wait -= dt;
           if (a.wait <= 0) {
@@ -392,11 +421,24 @@ export function GameCanvas({
           const dr = a.target.row - a.row;
           const dist = Math.hypot(dc, dr);
           if (dist < 0.05) {
-            a.state = "idle";
-            a.wait = 1 + Math.random() * 3;
+            if (a.errand === "to-studio") {
+              // Arrived at the Image Studio — "work" there while it generates.
+              a.errand = "at-studio";
+              a.state = "work";
+              a.wait = 2.5;
+            } else if (a.errand === "returning") {
+              a.errand = null;
+              a.state = "idle";
+              a.wait = 1 + Math.random() * 2;
+            } else {
+              a.state = "idle";
+              a.wait = 1 + Math.random() * 3;
+            }
           } else {
-            a.col += (dc / dist) * a.speed * dt;
-            a.row += (dr / dist) * a.speed * dt;
+            // Errands move with urgency; idle wandering stays leisurely.
+            const sp = a.errand ? a.speed * 1.8 : a.speed;
+            a.col += (dc / dist) * sp * dt;
+            a.row += (dr / dist) * sp * dt;
           }
         }
 
@@ -424,11 +466,13 @@ export function GameCanvas({
               ctx!.fill();
             }
             const imgH = img ? w * (img.height / img.width) : w;
-            // working indicator
-            if (a.state === "work") {
+            // working indicator — 🎨 while generating at the Image Studio,
+            // ⚙️ for ordinary work, plus a small "tag" while on an errand.
+            if (a.state === "work" || a.errand) {
               ctx!.font = `${Math.max(10, 14 * cam.zoom)}px ui-sans-serif, system-ui`;
               ctx!.textAlign = "center";
-              ctx!.fillText("⚙️", s.x, s.y - imgH - 16 + bob);
+              const glyph = a.errand ? "🎨" : "⚙️";
+              ctx!.fillText(glyph, s.x, s.y - imgH - 16 + bob);
             }
             // brand name tag
             ctx!.font = `600 ${Math.max(9, 12 * cam.zoom)}px ui-sans-serif, system-ui`;

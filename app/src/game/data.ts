@@ -190,6 +190,72 @@ export const BUILDING_MODELS: Partial<Record<ProviderId, string>> = {
   openrouter: "/models/openrouter-hub.glb",
 };
 
+// ---- Facility buildings -----------------------------------------------------
+// Non-provider 3D buildings that give the town a capability (rather than
+// spawning a branded chat agent). The Design Image Studio is where agents go to
+// generate images; YouTube is the video-production hub. Both are rotatable GLBs.
+
+export type FacilityId = "image-studio" | "youtube";
+
+export interface FacilityDef {
+  id: FacilityId;
+  name: string;
+  emoji: string;
+  model: string; // GLB rendered as a rotatable 3D building
+  color: string;
+  color2: string;
+  ink: string;
+  blurb: string;
+  // If set, this facility generates images via OpenRouter (the Image Studio).
+  usesImageGen?: boolean;
+}
+
+export const FACILITIES: Record<FacilityId, FacilityDef> = {
+  "image-studio": {
+    id: "image-studio",
+    name: "Design Image Studio",
+    emoji: "🎨",
+    model: "/models/image-studio.glb",
+    color: "#ec4899",
+    color2: "#a855f7",
+    ink: "#ffffff",
+    blurb:
+      "AI image generation, powered by OpenRouter. Ask any agent to create an image and it walks here to make it.",
+    usesImageGen: true,
+  },
+  youtube: {
+    id: "youtube",
+    name: "YouTube Studio",
+    emoji: "▶️",
+    model: "/models/youtube.glb",
+    color: "#ff0033",
+    color2: "#cc0029",
+    ink: "#ffffff",
+    blurb: "Video production hub — scripting, thumbnails, editing & uploads.",
+  },
+};
+
+export const FACILITY_ORDER: FacilityId[] = ["image-studio", "youtube"];
+
+// ---- Image generation -------------------------------------------------------
+// The Image Studio uses the OpenRouter API. These are OpenRouter's image-capable
+// models; the studio's default is used whenever an agent is told to create an
+// image (see AgentPanel image-intent handling).
+
+export interface ImageModelOption {
+  id: string;
+  label: string;
+}
+
+export const IMAGE_MODELS: ImageModelOption[] = [
+  { id: "google/gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image (Nano Banana)" },
+  { id: "google/gemini-2.0-flash-exp:free", label: "Gemini 2.0 Flash · image (free)" },
+  { id: "openai/gpt-4o", label: "GPT-4o · image output" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o mini · image output" },
+];
+
+export const DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview";
+
 // ---- Dock -------------------------------------------------------------------
 
 // Town Star-style rendered dock icons (glossy 3D, transparent PNG, lightweight).
@@ -262,15 +328,17 @@ export const BUILDING_LIBRARY: {
   label: string;
   desc: string;
   provider?: ProviderId; // if set, placing it spawns this provider's agent
+  facility?: FacilityId; // if set, places a 3D facility building (no agent)
 }[] = [
   { id: "openai", emoji: "🟢", label: "OpenAI HQ", desc: "Spawns Nova, your OpenAI agent.", provider: "openai" },
   { id: "anthropic", emoji: "🟠", label: "Anthropic Studio", desc: "Spawns Claude, your Anthropic agent.", provider: "anthropic" },
   { id: "grok", emoji: "🔵", label: "Grok Tower", desc: "Spawns Grok, your xAI agent.", provider: "grok" },
   { id: "openrouter", emoji: "🟣", label: "OpenRouter Hub", desc: "Spawns Router, multi-model access.", provider: "openrouter" },
+  { id: "design-studio", emoji: "🎨", label: "Design Image Studio", desc: "AI image generation via OpenRouter.", facility: "image-studio" },
+  { id: "youtube", emoji: "▶️", label: "YouTube Studio", desc: "Video production hub.", facility: "youtube" },
   { id: "research-lab", emoji: "🔬", label: "Research Lab", desc: "Research, reports, knowledge base." },
   { id: "builder-workshop", emoji: "🛠️", label: "Builder Workshop", desc: "App dev, automation, deploys." },
   { id: "social-hub", emoji: "📣", label: "Social Hub", desc: "Social media, campaigns, scheduling." },
-  { id: "design-studio", emoji: "🎨", label: "Design Studio", desc: "Images, branding, video." },
   { id: "sales-center", emoji: "💼", label: "Sales Center", desc: "CRM, leads, outreach." },
   { id: "finance-office", emoji: "💰", label: "Finance Office", desc: "Revenue, invoices, budgets." },
 ];

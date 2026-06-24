@@ -45,6 +45,13 @@ const ModelsInput = z.object({
   apiBase: z.string(),
 });
 
+const ImageInput = z.object({
+  apiKey: z.string().default(""),
+  apiBase: z.string().default("https://openrouter.ai/api/v1"),
+  model: z.string(),
+  prompt: z.string(),
+});
+
 export const listModels = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as z.infer<typeof ModelsInput>)
   .handler(async ({ data }) => {
@@ -80,6 +87,48 @@ export const listModels = createServerFn({ method: "POST" })
       return { models };
     } catch (err) {
       return { models: [], error: (err as Error).message };
+    }
+  });
+
+// Image generation through OpenRouter (the Design Image Studio). Uses the
+// chat-completions endpoint with `modalities: ["image","text"]`; image-capable
+// models return a data URL in `choices[0].message.images[0].image_url.url`.
+export const generateImage = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as z.infer<typeof ImageInput>)
+  .handler(async ({ data }) => {
+    const key = (data.apiKey || envKey("openrouter")).trim();
+    if (!key)
+      return { image: "", text: "", error: "Connect your OpenRouter Hub key (its building → Settings) to generate images." };
+    const base = (data.apiBase || "https://openrouter.ai/api/v1").replace(/\/$/, "");
+    if (!data.model || !data.prompt) return { image: "", text: "", error: "Missing model or prompt." };
+    try {
+      const res = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${key}`,
+          "HTTP-Referer": "https://agentvillage.os",
+          "X-Title": "AgentVillage OS",
+        },
+        body: JSON.stringify({
+          model: data.model,
+          modalities: ["image", "text"],
+          messages: [{ role: "user", content: data.prompt }],
+        }),
+      });
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string; images?: { image_url?: { url?: string } }[] } }[];
+        error?: { message?: string };
+      };
+      if (!res.ok) return { image: "", text: "", error: json?.error?.message || `HTTP ${res.status}` };
+      const msg = json.choices?.[0]?.message;
+      const image = msg?.images?.[0]?.image_url?.url ?? "";
+      const text = (msg?.content ?? "").trim();
+      if (!image)
+        return { image: "", text, error: text ? undefined : "The model returned no image — try a different image model in the studio." };
+      return { image, text };
+    } catch (err) {
+      return { image: "", text: "", error: (err as Error).message };
     }
   });
 

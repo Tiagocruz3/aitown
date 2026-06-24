@@ -3,12 +3,13 @@ import {
   PROVIDERS,
   DOCK,
   BUILDING_LIBRARY,
-  BUILDING_MODELS,
+  FACILITIES,
   TOWN_HALL,
   type DockKind,
   type ProviderId,
+  type FacilityId,
 } from "../game/data";
-import type { PlacedBuilding, LiveAgent, RoadTool } from "./GameCanvas";
+import { buildingModelUrl, buildingNameOf, type PlacedBuilding, type LiveAgent, type RoadTool } from "./GameCanvas";
 
 /* ==================================================================
    DYNAMIC DOCK — a fixed-size game toolbar (SimCity / Clash style).
@@ -45,6 +46,7 @@ export function Dock({
   selected,
   selectedAgent,
   onPlaceProvider,
+  onPlaceFacility,
   onPlaceTownHall,
   onRoadTool,
   onClearRoads,
@@ -68,6 +70,7 @@ export function Dock({
   selected: PlacedBuilding | null;
   selectedAgent: LiveAgent | null;
   onPlaceProvider: (p: ProviderId) => void;
+  onPlaceFacility: (f: FacilityId) => void;
   onPlaceTownHall: () => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
@@ -106,9 +109,9 @@ export function Dock({
       onDeleteBuilding,
       onChatBuilding,
     });
-    const name =
-      selected.kind === "town-hall" ? "Town Hall" : PROVIDERS[selected.provider].name;
-    return <DockBar crumbs={["Departments", name]} items={items} onBack={onDeselect} />;
+    return (
+      <DockBar crumbs={["Departments", buildingNameOf(selected)]} items={items} onBack={onDeselect} />
+    );
   }
 
   const roots = buildRoots({
@@ -116,6 +119,7 @@ export function Dock({
     roadTool,
     hasTownHall,
     onPlaceProvider,
+    onPlaceFacility,
     onPlaceTownHall,
     onRoadTool,
     onClearRoads,
@@ -244,6 +248,7 @@ function buildRoots(ctx: {
   roadTool: RoadTool | null;
   hasTownHall: boolean;
   onPlaceProvider: (p: ProviderId) => void;
+  onPlaceFacility: (f: FacilityId) => void;
   onPlaceTownHall: () => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
@@ -265,6 +270,7 @@ function buildingsMenu(ctx: {
   roadCount: number;
   roadTool: RoadTool | null;
   onPlaceProvider: (p: ProviderId) => void;
+  onPlaceFacility: (f: FacilityId) => void;
   onPlaceTownHall: () => void;
   onRoadTool: (t: RoadTool | null) => void;
   onClearRoads: () => void;
@@ -280,18 +286,30 @@ function buildingsMenu(ctx: {
   };
 
   const placeable: DockItem[] = BUILDING_LIBRARY.map((b) => {
-    const p = b.provider ? PROVIDERS[b.provider] : undefined;
-    return {
-      id: b.id,
-      label: b.label,
-      art: p?.buildingArt,
-      emoji: b.emoji,
-      accent: p?.color,
-      desc: b.desc,
-      badge: p ? undefined : "soon",
-      disabled: !p,
-      onSelect: p ? () => ctx.onPlaceProvider(b.provider!) : undefined,
-    };
+    if (b.provider) {
+      const p = PROVIDERS[b.provider];
+      return {
+        id: b.id,
+        label: b.label,
+        art: p.buildingArt,
+        emoji: b.emoji,
+        accent: p.color,
+        desc: b.desc,
+        onSelect: () => ctx.onPlaceProvider(b.provider!),
+      };
+    }
+    if (b.facility) {
+      const f = FACILITIES[b.facility];
+      return {
+        id: b.id,
+        label: b.label,
+        emoji: b.emoji,
+        accent: f.color,
+        desc: b.desc,
+        onSelect: () => ctx.onPlaceFacility(b.facility!),
+      };
+    }
+    return { id: b.id, label: b.label, emoji: b.emoji, desc: b.desc, badge: "soon", disabled: true };
   });
 
   const roads: DockItem = {
@@ -341,15 +359,19 @@ function buildingActions(
   },
 ): DockItem[] {
   const isHall = b.kind === "town-hall";
-  const is3D = b.kind === "provider" && !!BUILDING_MODELS[b.provider];
+  const isFacility = b.kind === "facility";
+  const is3D = !!buildingModelUrl(b);
   const items: DockItem[] = [
-    { id: "act-open", label: "Open", emoji: "🏢", onSelect: () => h.onOpenBuilding(b) },
+    { id: "act-open", label: "Open", emoji: isFacility ? "🏗️" : "🏢", onSelect: () => h.onOpenBuilding(b) },
   ];
-  if (!isHall) {
+  // Provider buildings have a branded agent + tool slots; facilities don't.
+  if (!isHall && !isFacility) {
     items.push({ id: "act-workers", label: "Workers", emoji: "👥", onSelect: () => h.onChatBuilding(b) });
     items.push({ id: "act-tools", label: "Tools", emoji: "🧰", badge: "soon", disabled: true });
   }
-  items.push({ id: "act-settings", label: "Settings", emoji: "⚙️", onSelect: () => h.onOpenBuilding(b) });
+  if (!isFacility) {
+    items.push({ id: "act-settings", label: "Settings", emoji: "⚙️", onSelect: () => h.onOpenBuilding(b) });
+  }
   if (is3D) {
     items.push({ id: "act-rotate", label: "Rotate", emoji: "🔄", onSelect: () => h.onRotateBuilding(b) });
   }

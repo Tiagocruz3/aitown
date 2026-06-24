@@ -1,7 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { PROVIDERS, PROVIDER_ORDER, TOWN_HALL, type ProviderId } from "../game/data";
-import { getConfig, setConfig, hasKey, systemPromptOf, type ProviderConfig } from "../game/config";
-import { chat, listModels } from "../lib/api/chat.functions";
+import {
+  PROVIDERS,
+  PROVIDER_ORDER,
+  TOWN_HALL,
+  FACILITIES,
+  IMAGE_MODELS,
+  type ProviderId,
+} from "../game/data";
+import {
+  getConfig,
+  setConfig,
+  hasKey,
+  systemPromptOf,
+  getImageModel,
+  setImageModel,
+  type ProviderConfig,
+} from "../game/config";
+import { chat, listModels, generateImage } from "../lib/api/chat.functions";
 import {
   getAgentStore,
   saveSession,
@@ -31,6 +46,31 @@ async function apiChat(input: {
   messages: { role: "user" | "assistant"; content: string }[];
 }): Promise<{ text: string; error?: string }> {
   return chat({ data: input });
+}
+
+async function apiGenerateImage(input: {
+  apiKey: string;
+  apiBase: string;
+  model: string;
+  prompt: string;
+}): Promise<{ image: string; text: string; error?: string }> {
+  return generateImage({ data: input });
+}
+
+// Does this message read like an instruction to CREATE an image? Only then does
+// the agent run off to the Design Image Studio and generate one.
+function isImageRequest(text: string): boolean {
+  const t = text.toLowerCase();
+  if (/^\/(image|img|imagine|draw)\b/.test(t)) return true;
+  return (
+    /\b(generate|create|make|draw|design|render|paint|produce|whip up|give me|build|sketch)\b/.test(t) &&
+    /\b(image|picture|pic|photo|logo|art|artwork|illustration|drawing|graphic|poster|thumbnail|icon|wallpaper|banner|sticker|avatar|mockup|render)s?\b/.test(t)
+  );
+}
+
+// Strip a leading slash-command (e.g. "/image a red fox") to the bare prompt.
+function imagePromptFrom(text: string): string {
+  return text.replace(/^\/(image|img|imagine|draw)\b\s*/i, "").trim() || text.trim();
 }
 
 /* ==================================================================
@@ -513,11 +553,21 @@ function RoadmapNote({ label }: { label: string }) {
 /* Agent chat panel (right side, ChatGPT-style)                        */
 /* ------------------------------------------------------------------ */
 
-interface ChatMsg { from: "user" | "agent"; text: string }
+interface ChatMsg { from: "user" | "agent"; text: string; image?: string }
 
 type AgentTab = "chat" | "history" | "projects" | "files" | "memory" | "tasks";
 
-export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClose: () => void }) {
+export function AgentPanel({
+  provider,
+  hasImageStudio = false,
+  onImageErrand,
+  onClose,
+}: {
+  provider: ProviderId;
+  hasImageStudio?: boolean;
+  onImageErrand?: () => boolean;
+  onClose: () => void;
+}) {
   const def = PROVIDERS[provider];
   const cfg = getConfig(provider);
   const live = hasKey(provider);
@@ -550,7 +600,10 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
       title: titleFromMessages(messages),
       createdAt: now,
       updatedAt: now,
-      messages,
+      // Don't persist big image data URLs to localStorage — keep a placeholder.
+      messages: messages.map((m) =>
+        m.image ? { from: m.from, text: m.text || "🎨 (generated image)" } : { from: m.from, text: m.text },
+      ),
     };
     saveSession(provider, session);
     setStore(getAgentStore(provider));
@@ -588,6 +641,52 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
     const next = [...msgs, { from: "user" as const, text }];
     setMsgs(next);
     setBusy(true);
+
+    // IMAGE INTENT: only when the user actually asks to CREATE an image does the
+    // agent run to the Design Image Studio and generate one (via OpenRouter).
+    if (isImageRequest(text)) {
+      const walked = onImageErrand?.() ?? false;
+      const ack = walked
+        ? `🎨 On it — heading to the Design Image Studio to create that…`
+        : hasImageStudio
+          ? `🎨 Creating that image…`
+          : `🎨 Creating that image… (build a Design Image Studio to watch me walk over and make it!)`;
+      const acked = [...next, { from: "agent" as const, text: ack }];
+      setMsgs(acked);
+      const orCfg = getConfig("openrouter");
+      try {
+        const res = await apiGenerateImage({
+          apiKey: orCfg.apiKey,
+          apiBase: orCfg.apiBase,
+          model: getImageModel(),
+          prompt: imagePromptFrom(text),
+        });
+        if (res.error) throw new Error(res.error);
+        const done: ChatMsg[] = [
+          ...acked,
+          {
+            from: "agent" as const,
+            text: res.text || `Here's your image, made at the Design Image Studio.`,
+            image: res.image,
+          },
+        ];
+        setMsgs(done);
+        persistSession(done);
+      } catch (err) {
+        const done: ChatMsg[] = [
+          ...acked,
+          {
+            from: "agent" as const,
+            text: `⚠️ Couldn't generate the image: ${(err as Error).message}. The studio uses your OpenRouter Hub key — open that building → Settings to add one.`,
+          },
+        ];
+        setMsgs(done);
+        persistSession(done);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
 
     if (live) {
       try {
@@ -664,6 +763,13 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
                 <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
                   <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed" style={m.from === "user" ? { background: def.color, color: def.ink } : { background: "#ffffff12", color: "#f1f1f4" }}>
                     {m.text}
+                    {m.image && (
+                      <img
+                        src={m.image}
+                        alt="Generated"
+                        className="mt-2 max-h-[420px] w-full rounded-xl border border-white/10 object-contain"
+                      />
+                    )}
                   </div>
                 </div>
               ))}
@@ -748,6 +854,112 @@ export function AgentPanel({ provider, onClose }: { provider: ProviderId; onClos
         </div>
       )}
     </CenterModal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Facility building panel (Design Image Studio / YouTube)             */
+/* ------------------------------------------------------------------ */
+
+export function FacilityPanel({
+  building,
+  onClose,
+  onMove,
+  onDelete,
+  onToast,
+}: {
+  building: PlacedBuilding;
+  onClose: () => void;
+  onMove: () => void;
+  onDelete: () => void;
+  onToast: (t: string) => void;
+}) {
+  const f = FACILITIES[building.facility!];
+  const [imgModel, setImgModelState] = useState(() => getImageModel());
+  const orCfg = getConfig("openrouter");
+  const orConnected = orCfg.apiKey.trim().length > 0;
+
+  function chooseModel(id: string) {
+    setImgModelState(id);
+    setImageModel(id);
+    onToast(`Default image model set · ${IMAGE_MODELS.find((m) => m.id === id)?.label ?? id}`);
+  }
+
+  return (
+    <RightPanel accent={f.color}>
+      <div
+        className="flex items-center gap-3 border-b border-white/10 p-4"
+        style={{ background: `linear-gradient(90deg, ${f.color}2e, transparent)` }}
+      >
+        <div className="grid h-12 w-12 place-items-center rounded-2xl text-2xl" style={{ background: `${f.color}22` }}>
+          {f.emoji}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-white">{f.name}</h2>
+          <p className="truncate text-xs text-white/55">Facility · 3D building</p>
+        </div>
+        <button onClick={onClose} className="rounded-lg px-2.5 py-1.5 text-white/55 hover:bg-white/10 hover:text-white">✕</button>
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+        <button onClick={onMove} className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10">✋ Move</button>
+        <button onClick={onDelete} className="ml-auto rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20">🗑 Remove</button>
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <p className="text-sm leading-relaxed text-white/70">{f.blurb}</p>
+
+        {f.usesImageGen ? (
+          <>
+            {/* OpenRouter connection status (image gen runs on the OpenRouter key) */}
+            <div
+              className="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm"
+              style={{
+                borderColor: orConnected ? "#22c55e55" : "#9ca3af55",
+                background: orConnected ? "#22c55e14" : "#9ca3af14",
+              }}
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: orConnected ? "#22c55e" : "#9ca3af", boxShadow: orConnected ? "0 0 8px #22c55e" : undefined }}
+              />
+              <span className="font-medium text-white/85">
+                {orConnected
+                  ? "Powered by your OpenRouter Hub key"
+                  : "Add an OpenRouter Hub key to generate images"}
+              </span>
+            </div>
+
+            <Field label="Default image model" hint="used when an agent is told to create an image">
+              <div className="relative">
+                <select
+                  value={imgModel}
+                  onChange={(e) => chooseModel(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-9 text-sm text-white outline-none focus:border-white/25"
+                  style={{ borderColor: `${f.color}66` }}
+                >
+                  {IMAGE_MODELS.map((m) => (
+                    <option key={m.id} value={m.id} className="bg-[#11131c]">
+                      {m.label} — {m.id}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40">▾</span>
+              </div>
+            </Field>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[12px] leading-relaxed text-white/55">
+              <p className="mb-1 font-semibold text-white/75">How it works</p>
+              Ask any chat agent to <span className="text-white/80">“create an image of…”</span> and it walks here
+              to generate it with the model above, then returns home — its trip is the visible sign that generation
+              is in progress and then complete.
+            </div>
+          </>
+        ) : (
+          <RoadmapNote label={`${f.name} controls`} />
+        )}
+      </div>
+    </RightPanel>
   );
 }
 
