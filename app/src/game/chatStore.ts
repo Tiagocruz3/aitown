@@ -4,6 +4,7 @@ import type { ProviderId } from "./data";
 export interface ChatMessage {
   from: "user" | "agent";
   text: string;
+  image?: string; // data URL for generated images (persisted with the chat)
 }
 
 export interface ChatSession {
@@ -43,8 +44,42 @@ function writeAll(all: Partial<Record<ProviderId, AgentStore>>) {
   try {
     localStorage.setItem(KEY, JSON.stringify(all));
   } catch {
-    /* ignore */
+    // Likely the quota was exceeded by large image data URLs. Keep the chats —
+    // drop images from all but each provider's most-recent session, then retry;
+    // if it still doesn't fit, drop every image. Text history is never lost.
+    try {
+      const trimmed = stripImages(all, true);
+      localStorage.setItem(KEY, JSON.stringify(trimmed));
+    } catch {
+      try {
+        const bare = stripImages(all, false);
+        localStorage.setItem(KEY, JSON.stringify(bare));
+      } catch {
+        /* give up — keep whatever was already stored */
+      }
+    }
   }
+}
+
+// Return a copy with image data URLs removed. `keepNewest` retains images in the
+// first (most-recent) session of each provider, dropping them from older ones.
+function stripImages(
+  all: Partial<Record<ProviderId, AgentStore>>,
+  keepNewest: boolean,
+): Partial<Record<ProviderId, AgentStore>> {
+  const out: Partial<Record<ProviderId, AgentStore>> = {};
+  for (const [id, store] of Object.entries(all) as [ProviderId, AgentStore][]) {
+    if (!store) continue;
+    out[id] = {
+      projects: store.projects,
+      sessions: store.sessions.map((s, i) =>
+        keepNewest && i === 0
+          ? s
+          : { ...s, messages: s.messages.map((m) => (m.image ? { ...m, image: undefined } : m)) },
+      ),
+    };
+  }
+  return out;
 }
 
 export function getAgentStore(id: ProviderId): AgentStore {

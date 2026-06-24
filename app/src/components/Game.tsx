@@ -707,6 +707,7 @@ export function Game() {
       )}
       {openAgentProvider && (
         <AgentPanel
+          key={openAgentProvider}
           provider={openAgentProvider}
           hasImageStudio={hasImageStudio}
           onImageErrand={() => sendAgentToStudio(openAgentProvider)}

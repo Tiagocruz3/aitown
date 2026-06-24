@@ -593,8 +593,16 @@ export function AgentPanel({
   const agentName = cfg.agentName.trim() || `${def.company} Agent`;
   const greeting = `Hi, I'm ${agentName}. How can I help?`;
   const [tab, setTab] = useState<AgentTab>("chat");
-  const [sessionId, setSessionId] = useState<string>(() => `s-${Date.now()}`);
-  const [msgs, setMsgs] = useState<ChatMsg[]>([{ from: "agent", text: greeting }]);
+  // Resume the most recent conversation on open (with its images); only start a
+  // fresh one when there's no saved history or the user clicks "+ New chat".
+  const [sessionId, setSessionId] = useState<string>(() => {
+    const last = getAgentStore(provider).sessions[0];
+    return last && last.messages.length ? last.id : `s-${Date.now()}`;
+  });
+  const [msgs, setMsgs] = useState<ChatMsg[]>(() => {
+    const last = getAgentStore(provider).sessions[0];
+    return last && last.messages.length ? last.messages : [{ from: "agent", text: greeting }];
+  });
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [store, setStore] = useState<AgentStore>(() => getAgentStore(provider));
@@ -615,10 +623,9 @@ export function AgentPanel({
       title: titleFromMessages(messages),
       createdAt: now,
       updatedAt: now,
-      // Don't persist big image data URLs to localStorage — keep a placeholder.
-      messages: messages.map((m) =>
-        m.image ? { from: m.from, text: m.text || "🎨 (generated image)" } : { from: m.from, text: m.text },
-      ),
+      // Persist the full conversation, generated images included (chatStore
+      // trims images only if it actually runs out of storage space).
+      messages: messages.map((m) => ({ from: m.from, text: m.text, ...(m.image ? { image: m.image } : {}) })),
     };
     saveSession(provider, session);
     setStore(getAgentStore(provider));
