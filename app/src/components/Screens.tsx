@@ -4,12 +4,9 @@ import {
   PROVIDERS,
   DOCK,
   AGENT_LIBRARY,
-  WORKFLOWS,
   INTEGRATIONS,
-  MISSION_SECTIONS,
-  ASSET_SECTIONS,
-  MARKETPLACE_SECTIONS,
-  WORLD_SECTIONS,
+  WORK_SECTIONS,
+  CONTROL_SECTIONS,
   type DockKind,
 } from "../game/data";
 import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
@@ -23,14 +20,10 @@ import type { PlacedBuilding, LiveAgent } from "./GameCanvas";
    ================================================================== */
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
-  agents: { title: "Agents", subtitle: "Your AI workforce — chat with an agent or browse types" },
-  workflows: { title: "Workflows", subtitle: "Production systems that chain your agents end-to-end" },
-  integrations: { title: "Integrations", subtitle: "Connect the tools your agents work with" },
-  workforce: { title: "Workforce", subtitle: "Team overview, performance & assignments" },
-  missions: { title: "Missions", subtitle: "Goals and tasks for your town" },
-  assets: { title: "Assets", subtitle: "Everything your company owns" },
-  marketplace: { title: "Marketplace", subtitle: "Discover agents, buildings & workflows" },
-  world: { title: "World", subtitle: "Cities, alliances, trade & leaderboards" },
+  staff: { title: "AI Staff", subtitle: "Create, manage and chat with your agents" },
+  services: { title: "Services", subtitle: "Connect external tools your agents can use" },
+  work: { title: "Work", subtitle: "Missions, projects, campaigns & tasks" },
+  control: { title: "Control Center", subtitle: "Keys, usage, registries, billing & settings" },
 };
 
 export function FullscreenView({
@@ -72,16 +65,12 @@ export function FullscreenView({
 
         {/* content */}
         <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-          {kind === "agents" && <AgentsScreen agents={agents} onOpenAgent={onOpenAgent} />}
-          {kind === "workforce" && (
-            <WorkforceScreen buildings={buildings} agents={agents} onOpenAgent={onOpenAgent} />
+          {kind === "staff" && <AgentsScreen agents={agents} onOpenAgent={onOpenAgent} />}
+          {kind === "services" && <IntegrationsScreen />}
+          {kind === "work" && <SectionScreen sections={WORK_SECTIONS} />}
+          {kind === "control" && (
+            <ControlScreen buildings={buildings} agents={agents} onOpenAgent={onOpenAgent} />
           )}
-          {kind === "workflows" && <SoonGrid items={WORKFLOWS} />}
-          {kind === "integrations" && <IntegrationsScreen />}
-          {kind === "missions" && <SectionScreen sections={MISSION_SECTIONS} />}
-          {kind === "assets" && <SectionScreen sections={ASSET_SECTIONS} />}
-          {kind === "marketplace" && <SectionScreen sections={MARKETPLACE_SECTIONS} />}
-          {kind === "world" && <SectionScreen sections={WORLD_SECTIONS} />}
         </div>
       </div>
     </div>
@@ -183,7 +172,15 @@ function AgentsScreen({ agents, onOpenAgent }: { agents: LiveAgent[]; onOpenAgen
   );
 }
 
-function WorkforceScreen({
+const CONTROL_ICON: Record<string, string> = {
+  "API Keys": "🔑",
+  Usage: "📈",
+  Analytics: "📊",
+  Billing: "💳",
+  Settings: "⚙️",
+};
+
+function ControlScreen({
   buildings,
   agents,
   onOpenAgent,
@@ -192,36 +189,64 @@ function WorkforceScreen({
   agents: LiveAgent[];
   onOpenAgent: (id: string) => void;
 }) {
+  const soon = CONTROL_SECTIONS.filter((s) => !s.includes("Registry"));
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Agents" value={agents.length} />
         <Stat label="Buildings" value={buildings.length} />
         <Stat label="Providers" value={new Set(agents.map((a) => a.provider)).size} />
-        <Stat label="Revenue" value="$0" />
+        <Stat label="Spend" value="$0" />
       </div>
-      {agents.length ? (
+
+      {agents.length > 0 && (
         <div>
-          <SectionLabel>Your team — click to chat</SectionLabel>
+          <SectionLabel>Agent registry — click to chat</SectionLabel>
           <Grid>
             {agents.map((a) => {
               const p = PROVIDERS[a.provider];
               return (
+                <GTile key={a.id} art={p.agentArt} label={a.name} desc={p.agent.title} accent={p.color} onClick={() => onOpenAgent(a.id)} />
+              );
+            })}
+          </Grid>
+        </div>
+      )}
+
+      {buildings.length > 0 && (
+        <div>
+          <SectionLabel>Building registry</SectionLabel>
+          <Grid>
+            {buildings.map((b) => {
+              const isHall = b.kind === "town-hall";
+              const p = isHall ? null : PROVIDERS[b.provider];
+              return (
                 <GTile
-                  key={a.id}
-                  art={p.agentArt}
-                  label={a.name}
-                  desc={`${p.agent.title} · ${a.state}`}
-                  accent={p.color}
-                  onClick={() => onOpenAgent(a.id)}
+                  key={b.id}
+                  art={p?.buildingArt}
+                  emoji={isHall ? "🏛️" : undefined}
+                  label={isHall ? "Town Hall" : p!.name}
+                  desc={`tile ${b.col}, ${b.row}`}
+                  accent={p?.color}
                 />
               );
             })}
           </Grid>
         </div>
-      ) : (
-        <EmptyNote label="No workers yet — place a provider building to hire your first agent." />
       )}
+
+      <div>
+        <SectionLabel>Control</SectionLabel>
+        <Grid>
+          {soon.map((s) => (
+            <GTile key={s} emoji={CONTROL_ICON[s] ?? "•"} label={s} badge="soon" disabled />
+          ))}
+        </Grid>
+      </div>
+      <p className="text-xs leading-relaxed text-white/40">
+        API keys are set per building — open a Department and use its Settings to add a provider key. Usage,
+        billing & analytics are on the roadmap.
+      </p>
     </div>
   );
 }
@@ -240,16 +265,6 @@ function IntegrationsScreen() {
         </div>
       ))}
     </div>
-  );
-}
-
-function SoonGrid({ items }: { items: { id: string; emoji: string; label: string; desc: string }[] }) {
-  return (
-    <Grid>
-      {items.map((w) => (
-        <GTile key={w.id} emoji={w.emoji} label={w.label} desc={w.desc} badge="soon" disabled />
-      ))}
-    </Grid>
   );
 }
 
@@ -286,15 +301,6 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
       <div className="text-2xl font-extrabold text-white">{value}</div>
       <div className="text-[11px] uppercase tracking-wide text-white/45">{label}</div>
-    </div>
-  );
-}
-
-function EmptyNote({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-white/12 bg-white/[0.02] py-16 text-center">
-      <span className="text-4xl opacity-70">🪧</span>
-      <p className="max-w-md text-sm text-white/55">{label}</p>
     </div>
   );
 }

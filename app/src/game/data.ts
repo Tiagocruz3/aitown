@@ -206,18 +206,8 @@ export const DOCK_ICONS = {
   world: ICONCDN + "eca13e72-4b65-4a15-baf2-237cff4e0180.png",
 } as const;
 
-// Modal kinds opened by each dock category.
-export type DockKind =
-  | "agents"
-  | "buildings"
-  | "workflows"
-  | "integrations"
-  | "workforce"
-  | "missions"
-  | "assets"
-  | "marketplace"
-  | "world"
-  | "roads";
+// The 5 MVP dock categories (context-aware; see Trays/Dock).
+export type DockKind = "staff" | "departments" | "services" | "work" | "control";
 
 export interface DockCategory {
   id: DockKind;
@@ -236,27 +226,15 @@ export const ROAD = {
   dash: "#d9c66a",
 } as const;
 
-// The 9-category dock, in the spec order.
+// The 5-category MVP dock. Departments drills into the in-dock placement
+// menu; the rest open a full-screen view. Selecting an agent/building turns
+// the dock into that thing's command center (see Trays).
 export const DOCK: DockCategory[] = [
-  { id: "agents", icon: DOCK_ICONS.agents, emoji: "🤖", label: "Agents" },
-  { id: "buildings", icon: DOCK_ICONS.buildings, emoji: "🏢", label: "Buildings" },
-  { id: "workflows", icon: DOCK_ICONS.workflows, emoji: "⚡", label: "Workflows" },
-  {
-    id: "integrations",
-    icon: DOCK_ICONS.integrations,
-    emoji: "🔌",
-    label: "Integrations",
-  },
-  { id: "workforce", icon: DOCK_ICONS.workforce, emoji: "👥", label: "Workforce" },
-  { id: "missions", icon: DOCK_ICONS.missions, emoji: "📋", label: "Missions" },
-  { id: "assets", icon: DOCK_ICONS.assets, emoji: "📦", label: "Assets" },
-  {
-    id: "marketplace",
-    icon: DOCK_ICONS.marketplace,
-    emoji: "🛒",
-    label: "Marketplace",
-  },
-  { id: "world", icon: DOCK_ICONS.world, emoji: "🌍", label: "World" },
+  { id: "staff", icon: DOCK_ICONS.agents, emoji: "🤖", label: "AI Staff" },
+  { id: "departments", icon: DOCK_ICONS.buildings, emoji: "🏢", label: "Departments" },
+  { id: "services", icon: DOCK_ICONS.integrations, emoji: "🧰", label: "Services" },
+  { id: "work", icon: DOCK_ICONS.missions, emoji: "📋", label: "Work" },
+  { id: "control", icon: DOCK_ICONS.workforce, emoji: "📊", label: "Control Center" },
 ];
 
 // ---- Library / modal content -----------------------------------------------
@@ -370,6 +348,10 @@ export const MISSION_SECTIONS = ["Active Missions", "Completed Missions", "Sched
 export const ASSET_SECTIONS = ["Buildings", "Agents", "Models", "Voices", "Images", "Documents", "Knowledge Bases"];
 export const MARKETPLACE_SECTIONS = ["Agents", "Buildings", "Workflows", "Plugins", "Themes", "Templates"];
 export const WORLD_SECTIONS = ["Cities", "Alliances", "Trade", "Agent Rentals", "Leaderboards"];
+
+// MVP dock sections.
+export const WORK_SECTIONS = ["Missions", "Projects", "Campaigns", "Research Tasks", "Build Requests"];
+export const CONTROL_SECTIONS = ["API Keys", "Usage", "Analytics", "Agent Registry", "Building Registry", "Billing", "Settings"];
 
 // Town Hall — a physical building (NOT in the dock). Its modal is the OS control center.
 export const TOWN_HALL = {

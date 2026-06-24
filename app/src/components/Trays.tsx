@@ -8,7 +8,7 @@ import {
   type DockKind,
   type ProviderId,
 } from "../game/data";
-import type { PlacedBuilding, RoadTool } from "./GameCanvas";
+import type { PlacedBuilding, LiveAgent, RoadTool } from "./GameCanvas";
 
 /* ==================================================================
    DYNAMIC DOCK — a fixed-size game toolbar (SimCity / Clash style).
@@ -43,6 +43,7 @@ export function Dock({
   roadTool,
   hasTownHall,
   selected,
+  selectedAgent,
   onPlaceProvider,
   onPlaceTownHall,
   onRoadTool,
@@ -51,10 +52,13 @@ export function Dock({
   onOpenBuilding,
   onMoveBuilding,
   onRotateBuilding,
-  onDuplicateBuilding,
   onDeleteBuilding,
   onChatBuilding,
   onDeselect,
+  onChatAgent,
+  onConfigureAgent,
+  onDeleteAgent,
+  onDeselectAgent,
 }: {
   path: string[];
   onNavigate: (path: string[]) => void;
@@ -62,6 +66,7 @@ export function Dock({
   roadTool: RoadTool | null;
   hasTownHall: boolean;
   selected: PlacedBuilding | null;
+  selectedAgent: LiveAgent | null;
   onPlaceProvider: (p: ProviderId) => void;
   onPlaceTownHall: () => void;
   onRoadTool: (t: RoadTool | null) => void;
@@ -70,11 +75,27 @@ export function Dock({
   onOpenBuilding: (b: PlacedBuilding) => void;
   onMoveBuilding: (b: PlacedBuilding) => void;
   onRotateBuilding: (b: PlacedBuilding) => void;
-  onDuplicateBuilding: (b: PlacedBuilding) => void;
   onDeleteBuilding: (b: PlacedBuilding) => void;
   onChatBuilding: (b: PlacedBuilding) => void;
   onDeselect: () => void;
+  onChatAgent: (a: LiveAgent) => void;
+  onConfigureAgent: (a: LiveAgent) => void;
+  onDeleteAgent: (a: LiveAgent) => void;
+  onDeselectAgent: () => void;
 }) {
+  // A selected agent turns the dock into the agent command center.
+  if (selectedAgent) {
+    const a = selectedAgent;
+    const items: DockItem[] = [
+      { id: "ag-chat", label: "Chat", emoji: "💬", onSelect: () => onChatAgent(a) },
+      { id: "ag-assign", label: "Assign", emoji: "📋", badge: "soon", disabled: true },
+      { id: "ag-memory", label: "Memory", emoji: "🧠", badge: "soon", disabled: true },
+      { id: "ag-config", label: "Configure", emoji: "⚙️", onSelect: () => onConfigureAgent(a) },
+      { id: "ag-delete", label: "Delete", emoji: "🗑️", danger: true, onSelect: () => onDeleteAgent(a) },
+    ];
+    return <DockBar crumbs={["AI Staff", a.name]} items={items} onBack={onDeselectAgent} />;
+  }
+
   // When a building is selected on the map, the dock becomes its command
   // center — a self-contained context level that ignores the menu stack.
   if (selected) {
@@ -82,14 +103,12 @@ export function Dock({
       onOpenBuilding,
       onMoveBuilding,
       onRotateBuilding,
-      onDuplicateBuilding,
       onDeleteBuilding,
       onChatBuilding,
-      onDeselect,
     });
     const name =
       selected.kind === "town-hall" ? "Town Hall" : PROVIDERS[selected.provider].name;
-    return <DockBar crumbs={["Buildings", name]} items={items} onBack={onDeselect} />;
+    return <DockBar crumbs={["Departments", name]} items={items} onBack={onDeselect} />;
   }
 
   const roots = buildRoots({
@@ -232,7 +251,9 @@ function buildRoots(ctx: {
 }): DockItem[] {
   return DOCK.map((d) => {
     const base = { id: d.id, label: d.label, icon: d.icon, emoji: d.emoji };
-    if (d.id === "buildings") {
+    // Departments drills into the in-dock placement menu (map stays visible);
+    // every other category opens a full-screen view.
+    if (d.id === "departments") {
       return { ...base, children: buildingsMenu(ctx) };
     }
     return { ...base, onSelect: () => ctx.onOpenFullscreen(d.id) };
@@ -315,44 +336,24 @@ function buildingActions(
     onOpenBuilding: (b: PlacedBuilding) => void;
     onMoveBuilding: (b: PlacedBuilding) => void;
     onRotateBuilding: (b: PlacedBuilding) => void;
-    onDuplicateBuilding: (b: PlacedBuilding) => void;
     onDeleteBuilding: (b: PlacedBuilding) => void;
     onChatBuilding: (b: PlacedBuilding) => void;
-    onDeselect: () => void;
   },
 ): DockItem[] {
   const isHall = b.kind === "town-hall";
   const is3D = b.kind === "provider" && !!BUILDING_MODELS[b.provider];
   const items: DockItem[] = [
-    {
-      id: "act-open",
-      label: "Settings",
-      emoji: "⚙️",
-      onSelect: () => h.onOpenBuilding(b),
-    },
+    { id: "act-open", label: "Open", emoji: "🏢", onSelect: () => h.onOpenBuilding(b) },
   ];
   if (!isHall) {
-    items.push({ id: "act-chat", label: "Chat", emoji: "💬", onSelect: () => h.onChatBuilding(b) });
+    items.push({ id: "act-workers", label: "Workers", emoji: "👥", onSelect: () => h.onChatBuilding(b) });
+    items.push({ id: "act-tools", label: "Tools", emoji: "🧰", badge: "soon", disabled: true });
   }
-  items.push({ id: "act-move", label: "Move", emoji: "✋", onSelect: () => h.onMoveBuilding(b) });
+  items.push({ id: "act-settings", label: "Settings", emoji: "⚙️", onSelect: () => h.onOpenBuilding(b) });
   if (is3D) {
     items.push({ id: "act-rotate", label: "Rotate", emoji: "🔄", onSelect: () => h.onRotateBuilding(b) });
   }
-  items.push({ id: "act-upgrade", label: "Upgrade", emoji: "⬆️", badge: "soon", disabled: true });
-  if (!isHall) {
-    items.push({
-      id: "act-duplicate",
-      label: "Duplicate",
-      emoji: "➕",
-      onSelect: () => h.onDuplicateBuilding(b),
-    });
-  }
-  items.push({
-    id: "act-delete",
-    label: "Delete",
-    emoji: "💣",
-    danger: true,
-    onSelect: () => h.onDeleteBuilding(b),
-  });
+  items.push({ id: "act-move", label: "Move", emoji: "🚚", onSelect: () => h.onMoveBuilding(b) });
+  items.push({ id: "act-delete", label: "Delete", emoji: "🗑️", danger: true, onSelect: () => h.onDeleteBuilding(b) });
   return items;
 }

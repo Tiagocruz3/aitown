@@ -31,6 +31,7 @@ export function Game() {
   const [movingId, setMovingId] = useState<string | null>(null);
   const [roadCount, setRoadCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null); // building selected on map (shows edit toolbar)
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null); // agent selected on map
   const [openBuilding, setOpenBuilding] = useState<PlacedBuilding | null>(null);
   const [openTownHall, setOpenTownHall] = useState<PlacedBuilding | null>(null);
   const [openAgentId, setOpenAgentId] = useState<string | null>(null);
@@ -330,6 +331,7 @@ export function Game() {
   // Clicking an empty tile highlights it AND opens the dock there. Clicking
   // off the grid (or another action) clears it, which hides the dock again.
   function pickTile(cell: { col: number; row: number } | null) {
+    setSelectedAgentId(null);
     if (cell) {
       setPickedTile(cell);
     } else {
@@ -338,12 +340,33 @@ export function Game() {
     }
   }
 
+  // Clicking an agent on the map SELECTS it — the dock becomes the agent
+  // command center (Chat / Assign / Memory / Configure / Delete).
+  function selectAgent(id: string) {
+    setDockPath([]);
+    setPickedTile(null);
+    setFullscreen(null);
+    setSelectedId(null);
+    setOpenBuilding(null);
+    setOpenTownHall(null);
+    setOpenAgentId(null);
+    setSelectedAgentId(id);
+  }
+  function configureAgent(a: LiveAgent) {
+    const b = buildings.find((x) => x.id === a.id);
+    if (b) openBuildingById(b);
+  }
+  function confirmRemoveAgent(a: LiveAgent) {
+    const b = buildings.find((x) => x.id === a.id);
+    if (b) confirmRemoveBuilding(b);
+  }
+
   // Clicking a building on the map just SELECTS it — the dock turns into that
-  // building's command center (Configure / Move / Duplicate / Delete …). The
-  // full settings panel only opens via the dock's "Configure" action.
+  // building's command center. The full settings panel only opens via "Open".
   function selectBuilding(b: PlacedBuilding) {
     setDockPath([]);
     setPickedTile(null);
+    setSelectedAgentId(null);
     setFullscreen(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
@@ -351,10 +374,11 @@ export function Game() {
     setSelectedId(b.id);
   }
 
-  // Open a roomy full-screen management screen (Workforce, Marketplace, …).
+  // Open a roomy full-screen management screen (AI Staff, Services, …).
   function openFullscreen(kind: DockKind) {
     setDockPath([]);
     setPickedTile(null);
+    setSelectedAgentId(null);
     setSelectedId(null);
     setOpenBuilding(null);
     setOpenTownHall(null);
@@ -405,6 +429,12 @@ export function Game() {
   const liveAgents = agents.current;
   const hasTownHall = buildings.some((b) => b.kind === "town-hall");
   const selected = buildings.find((b) => b.id === selectedId) ?? null;
+  const selectedAgent = agents.current.find((a) => a.id === selectedAgentId) ?? null;
+  const highlightTile = selected
+    ? { col: selected.col, row: selected.row }
+    : selectedAgent
+      ? { col: selectedAgent.homeCol, row: selectedAgent.homeRow }
+      : pickedTile;
   const openAgentProvider = openAgentId
     ? (agents.current.find((a) => a.id === openAgentId)?.provider ?? null)
     : null;
@@ -418,12 +448,12 @@ export function Game() {
         placingActive={!!placing}
         roadTool={roadTool}
         movingId={movingId}
-        selectedTile={selected ? { col: selected.col, row: selected.row } : pickedTile}
+        selectedTile={highlightTile}
         onPlace={place}
         onPaintRoad={paintRoad}
         onMoveTo={moveTo}
         onPickBuilding={selectBuilding}
-        onPickAgent={openAgentById}
+        onPickAgent={selectAgent}
         onPickTile={pickTile}
         onDeselect={() => setSelectedId(null)}
         onContextBuilding={(b, x, y) => setCtx({ b, x, y })}
@@ -451,13 +481,13 @@ export function Game() {
             <div className="text-3xl">🏗️</div>
             <p className="mt-2 font-semibold text-white">Your town is empty</p>
             <p className="mt-1 max-w-xs text-sm text-white/60">
-              Open <b>Buildings</b> and place the Town Hall, then add provider buildings — each one hires its branded AI agent.
+              Open <b>Departments</b> and place the Town Hall, then add provider buildings — each one hires its branded AI agent.
             </p>
             <button
-              onClick={() => navigateDock(["buildings"])}
+              onClick={() => navigateDock(["departments"])}
               className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
             >
-              Open Buildings
+              Open Departments
             </button>
           </div>
         </div>
@@ -511,7 +541,7 @@ export function Game() {
       {/* ===== Dynamic dock — only appears when a square is highlighted ===== */}
       {/* Click an empty tile to open it at root, or a building for its command */}
       {/* center; otherwise the bottom stays clear. */}
-      {!movingId && !fullscreen && (selected || pickedTile || dockPath.length > 0) && (
+      {!movingId && !fullscreen && (selected || selectedAgent || pickedTile || dockPath.length > 0) && (
         <Dock
           path={dockPath}
           onNavigate={navigateDock}
@@ -519,6 +549,7 @@ export function Game() {
           roadTool={roadTool}
           hasTownHall={hasTownHall}
           selected={selected}
+          selectedAgent={selectedAgent}
           onPlaceProvider={startPlacingProvider}
           onPlaceTownHall={startPlacingTownHall}
           onRoadTool={chooseRoadTool}
@@ -527,10 +558,13 @@ export function Game() {
           onOpenBuilding={openBuildingById}
           onMoveBuilding={startMoving}
           onRotateBuilding={rotateBuilding}
-          onDuplicateBuilding={duplicateBuilding}
           onDeleteBuilding={confirmRemoveBuilding}
           onChatBuilding={(b) => openAgentByProvider(b.provider)}
           onDeselect={() => setSelectedId(null)}
+          onChatAgent={(a) => openAgentById(a.id)}
+          onConfigureAgent={configureAgent}
+          onDeleteAgent={confirmRemoveAgent}
+          onDeselectAgent={() => setSelectedAgentId(null)}
         />
       )}
 
